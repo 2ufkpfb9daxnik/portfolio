@@ -1,0 +1,41 @@
+body{
+    background-color: lightyellow;
+    }
+    .header {
+    height: 150px;
+    background-color: yellow;
+    }
+    .footer{
+    height: 200px;
+    background: black;
+    color: #fff;
+    clear: both;
+    }
+    .container {
+        display: flex; 
+      }
+      
+      .main-contents, 
+      .left-navi,
+      .right-navi {
+        flex: 1;
+      }
+      
+      .main-contents {
+        background-color: red;
+        color: #fff;
+      }
+      
+      .left-navi {
+        background-color: blue;
+        color: #fff; 
+      }
+      
+      .right-navi {
+        background-color: green;
+        color: #fff;
+      }
+    .main{
+    width: 80%;
+    float: right;
+    }
