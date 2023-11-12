@@ -27,14 +27,3 @@ body{
     width: 66.666666666%;
     float: right;
     }
-    details {
-    border: 1px solid #aaa;
-    padding: 0.5em 0.5em 0;
-    }
-    summary {
-    margin: -0.5em -0.5em 0;
-    padding: 0.5em;
-    }
-    details[open] {
-    padding: 0.5em;
-    }
