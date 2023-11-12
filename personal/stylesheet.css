@@ -1,15 +1,14 @@
 body{
-    background-color: gray;
+    background-color: lightgray;
     }
     .header {
     height: 150px;
     }
     .footer{
-    height: 200px;
+    height: 700px;
     clear: both;
     }
     .main-contents, .left-navi, .right-navi {
-    height: 400px;
     padding: 1px;
     }
     .main-contents {
@@ -27,4 +26,15 @@ body{
     .main{
     width: 66.666666666%;
     float: right;
+    }
+    details {
+    border: 1px solid #aaa;
+    padding: 0.5em 0.5em 0;
+    }
+    summary {
+    margin: -0.5em -0.5em 0;
+    padding: 0.5em;
+    }
+    details[open] {
+    padding: 0.5em;
     }
