@@ -1,6 +1,5 @@
 body{
     background-color: lightgray;
-    max-width: 640px;
     }
     .header {
     height: 150px;
@@ -8,9 +7,6 @@ body{
     .footer{
     height: 700px;
     clear: both;
-    }
-    .main-contents{
-        text-align: center;
     }
     .main-contents, .left-navi, .right-navi {
     padding: 1px;
@@ -20,13 +16,14 @@ body{
     width: 50%;
     }
     .left-navi {
-    text-align: left;
+    width: 33%;
+    float: right;
     }
     .right-navi {
     float: right;
     width: 49%;
     }
     .main{
-    width: 100%;
+    width: 66.666666666%;
     float: right;
     }
