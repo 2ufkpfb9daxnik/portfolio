@@ -33,3 +33,17 @@ body {
     max-width: calc(100% / 3); 
     box-sizing: border-box; /* 内側の余白をカラムのサイズに含める */
   }
+
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+  }
+  .left-content,
+  .right-content {
+    order: 2;
+    }
+
+  .main-content {
+    order: 1;
+  }
+}
