@@ -2,24 +2,634 @@
 <html lang="ja">
 	<head>
 		<meta charset="utf-8">
-		<title>javascriptとjavaの違い</title>
+		<title>JavaScriptとJavaを比較する</title>
 		<meta name="description" content="">
 		<meta name="keywords" content="">
-		<link rel="stylesheet" href="stylesheet.css">
+		<link rel="stylesheet" href="main.css">
+		<script src="script.js"></script>
 	</head>
 	<body>
+		<!-- 縦向きのテキスト -->
+		<div class="sticky-label js-label">JavaScript</div>
+		<div class="sticky-label java-label">Java</div>
+		<div class="index">
+			<ul id = "toc">
+			</ul>
+		</div> 
+	
 		<div class="container">
-			<div class="left-content">
-				<!-- 左側 -->
-				最終更新:2024/07/24
-
-
+			<div class="section js">
+				<h2>JavaScript</h2>
+				<div class="content">
+					<img src="JavaScript_Logo.png" width = "95.2%" height="95.2%">
+					<h3>公式サイト</h3>
+					<a href="https://ecma-international.org/publications-and-standards/standards/ecma-262/" target="_blank">ECMA-262</a>
+					<h3>コメント</h3>
+					<p>Javascriptではコメントを//ではじめます。</p>
+					<div class="code-block">
+						<pre>
+	// これはコメントです
+						</pre>
+					</div>
+					<p>複数行のコメントは、/*で初めて*/で終わります。</p>
+					<div class="code-block">
+						<pre>
+	/*
+	 * これは
+	 * 複数行の
+	 * コメントです
+	 */
+						</pre>
+					</div>
+					<p>一方、javascriptではjavadocコマンドで抜き出して文書化するということはできません。</p>
+					<br>
+					<h3>型</h3>
+					<p>JavaScriptは動的型付けの言語であり、変数の型は実行時に決まります。</p>
+					<div class="code-block">
+						<pre>
+		let number = 42;  // これは数値型
+		let text = "こんにちは";  // これは文字列型
+						</pre>
+					</div>
+					<p>JavaScriptでは、変数の型は明示的に宣言する必要はありません。</p>
+					<p>以下に主要な型一覧を掲載します。</p>
+					<ul>
+						<li>数値型(number)</li>
+						<li>文字列型(string)</li>
+						<li>真偽値型(boolean)</li>
+						<li>オブジェクト型(object)</li>
+						<li>関数型(function)</li>
+						<li>未定義型(undefined)</li>
+						<li>ヌル型(null)</li>
+						<li>シンボル型(symbol)</li>
+					</ul>
+					<br>
+					<h3>演算子</h3>
+					<h4>文字列演算子</h4>
+					<p>JavaScriptでは、+演算子を用いて文字列を連結することができます。</p>
+					<div class="code-block">
+						<pre>
+		let text1 = "Hello";
+		let text2 = "World";
+		let text3 = text1 + text2;  // "HelloWorld"
+						</pre>
+					</div>
+					<h4>算術演算子</h4>
+					<p>JavaScriptでは、+、-、*、/、%演算子を用いて算術演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number1 = 10;
+		let number2 = 3;
+		let number3 = number1 + number2;  // 13
+		let number4 = number1 - number2;  // 7
+		let number5 = number1 * number2;  // 30
+		let number6 = number1 / number2;  // 3.3333333333333335
+		let number7 = number1 % number2;  // 1
+						</pre>
+					</div>
+					<p>また、++でインクリメント、--でデクリメントを表します。</p>
+					<div class="code-block">
+						<pre>
+		let number = 10;
+		number++;  // 11
+		number--;  // 10
+						</pre>
+					</div>
+					<h4>論理演算子</h4>
+					<p>JavaScriptでは、&&、||演算子を用いて論理演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let flag1 = true;
+		let flag2 = false;
+		let flag3 = flag1 && flag2;  // false
+		let flag4 = flag1 || flag2;  // true
+						</pre>
+					</div>
+					<h4>代入演算子</h4>
+					<p>JavaScriptでは、=演算子を用いて代入演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 10;
+		number = 20;  // 20
+						</pre>
+					</div>
+					<p>また、+=、-=、*=、/=、%=演算子を用いて複合代入演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 10;
+		number += 5;  // 15
+		number -= 5;  // 5
+		number *= 5;  // 50
+		number /= 5;  // 2
+		number %= 5;  // 0
+						</pre>
+					</div>
+					<h4>比較演算子</h4>
+					<p>JavaScriptでは、==、!=、>、<、>=、<=演算子を用いて比較演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number1 = 10;
+		let number2 = 20;
+		let flag1 = number1 == number2;  // false
+		let flag2 = number1 != number2;  // true
+		let flag3 = number1 > number2;  // false
+		let flag4 = number1 < number2;  // true
+		let flag5 = number1 >= number2;  // false
+		let flag6 = number1 <= number2;  // true
+						</pre>
+					</div>
+					<br>
+					<h3>if文</h3>
+					<p>JavaScriptでは、if文を用いて条件分岐を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 10;
+		if (number > 0) {
+			console.log("正の数です");
+		} else if (number < 0) {
+			console.log("負の数です");
+		} else {
+			console.log("0です");
+		}
+						</pre>
+					</div>
+					<h3>switch文</h3>
+					<p>JavaScriptでは、switch文を用いて条件分岐を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 1;
+		switch (number) {
+			case 1:
+				console.log("1です");
+				break;
+			case 2:
+				console.log("2です");
+				break;
+			default:
+				console.log("それ以外です");
+				break;
+		}
+						</pre>
+					</div>
+					<h3>do文</h3>
+					<p>JavaScriptでは、do文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 0;
+		do {
+			console.log(number);
+			number++;
+		} while (number < 3);
+						</pre>
+					</div>
+					<h3>while文</h3>
+					<p>JavaScriptでは、while文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		let number = 0;
+		while (number < 3) {
+			console.log(number);
+			number++;
+		}
+						</pre>
+					</div>
+					<h3>for文</h3>
+					<p>JavaScriptでは、for文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		for (let number = 0; number < 3; number++) {
+			console.log(number);
+		}
+						</pre>
+					</div>
+					<h3>break文</h3>
+					<p>JavaScriptでは、break文を用いて繰り返し処理を中断することができます。</p>
+					<div class="code-block">
+						<pre>
+		for (let number = 0; number < 3; number++) {
+			if (number === 1) {
+				break;
+			}
+			console.log(number);
+		}
+						</pre>
+					</div>
+					<h3>continue文</h3>
+					<p>JavaScriptでは、continue文を用いて繰り返し処理をスキップすることができます。</p>
+					<div class="code-block">
+						<pre>
+		for (let number = 0; number < 3; number++) {
+			if (number === 1) {
+				continue;
+			}
+			console.log(number);
+		}
+						</pre>
+					</div>
+					<br>
+					<h3>配列</h3>
+					<p>JavaScriptでは、配列を用いて複数の値を格納することができます。</p>
+					<div class="code-block">
+						<pre>
+		let array = [1, 2, 3, 4, 5];
+		console.log(array[0]);  // 1
+		console.log(array[1]);  // 2
+		console.log(array[2]);  // 3
+		console.log(array[3]);  // 4
+		console.log(array[4]);  // 5
+						</pre>
+					</div>
+					<p>また、配列の要素数はlengthプロパティで取得することができます。</p>
+					<div class="code-block">
+						<pre>
+		let array = [1, 2, 3, 4, 5];
+		console.log(array.length);  // 5
+						</pre>
+					</div>
+					<h4>多次元配列</h4>
+					<p>JavaScriptでは、多次元配列を用いて複数の値を格納することができます。</p>
+					<div class="code-block">
+						<pre>
+		let array = [[1, 2], [3, 4], [5, 6]];
+		console.log(array[0][0]);  // 1
+		console.log(array[0][1]);  // 2
+		console.log(array[1][0]);  // 3
+		console.log(array[1][1]);  // 4
+		console.log(array[2][0]);  // 5
+		console.log(array[2][1]);  // 6
+						</pre>
+					</div>
+					<h3>関数</h3>
+					<p>JavaScriptでは、関数を用いて処理をまとめることができます。</p>
+					<div class="code-block">
+						<pre>
+		function sayHello() {
+			console.log("Hello");
+		}
+		sayHello();  // "Hello"
+						</pre>
+					</div>
+					<p>また、引数を用いて関数に値を渡すことができます。</p>
+					<div class="code-block">
+						<pre>
+		function sayHello(name) {
+			console.log("Hello, " + name);
+		}
+		sayHello("Alice");  // "Hello, Alice"
+		sayHello("Bob");  // "Hello, Bob"
+						</pre>
+					</div>
+					<p>さらに、戻り値を用いて関数から値を返すことができます。</p>
+					<div class="code-block">
+						<pre>
+		function add(number1, number2) {
+			return number1 + number2;
+		}
+		let result = add(1, 2);
+		console.log(result);  // 3
+						</pre>
+					</div>	
+					<br>
+					<h3>クラス</h3>
+					<p>JavaScriptでは、クラスを用いてオブジェクト指向プログラミングを行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		class Person {
+			constructor(name, age) {
+				this.name = name;
+				this.age = age;
+			}
+			sayHello() {
+				console.log("Hello, " + this.name);
+			}	
+		}
+		let person = new Person("Alice", 20);
+		person.sayHello();  // "Hello, Alice"
+						</pre>
+					</div>
+					<p>クラスには、フィールド(変数)とメソッド(関数)が含まれます。</p>
+					<p>また、クラスからインスタンス(オブジェクト)を生成することができます。</p>
+					<p>コンストラクタとは、そのクラスのインスタンスを生成するものです。</p>
+					<br>
+					<h3>その他</h3>
+					<li>TypeScriptは、JavaScriptのスーパーセット(完全上位互換)として、静的型付けを導入した言語です。Microsoftによって開発されました。<a href = "https://learn.microsoft.com/en-us/minecraft/creator/documents/scriptinggettingstarted?view=minecraft-bedrock-stable">実は、Minecraftの統合版のMODを書けちゃいます。</a></li>
+					<li>旧Facebook(現Meta)が開発したReactは有名です。手続き的ではなく宣言的なプログラミングを行えるため、可読性の高いコードを書くことができます<a href = "https://reactos.org">(悪しき独占に反抗するReact OSと間違えないように！)</a>。</li>
+					<li>Googleが開発したAngularは、TypeScriptを使用しているため、型安全性が高いです。</li>
+					<li>Vue.jsは、ReactとAngularの中間のようなフレームワークであり、学習コストが低いと言われています。</li>
+					<li>jQueryは、<a href = "https://w3techs.com/technologies/overview/javascript_library">最も多くのWebサイトで利用されている</a>ライブラリです。</li>
+				</div>
+				
 			</div>
-			<div class="main-content">
-				<!-- 中央 -->				
-			<div class="right-content">
-				<!-- 右側 -->
+			<div class="section java">
+				<h2>Java</h2>
+				<img src="Java_Logo.png" width = "100%" height="100%">
+				<div class="content">
+				<h3>公式サイト</h3>
+				<a href = "https://www.oracle.com/java/">オラクル</a>
+					<h3>コメント</h3>
+					<p>Javaではコメントを//ではじめます。</p>
+					<div class="code-block">
+						<pre>
+	// これはコメントです
+						</pre>
+					</div>
+					<p>複数行のコメントは、/*で初めて*/で終わります。</p>
+					<div class="code-block">
+						<pre>
+	/*
+	 * これは
+	 * 複数行の
+	 * コメントです
+	 */
+						</pre>
+					</div>
+					<p>また、Javaでは/**で始めることでjavadocコマンドで抜き出して文書化することができます。</p>
+					<br>
+					<h3>型</h3>
+					<p>Javaは静的型付けの言語であり、変数の型はコンパイル時に決まります。</p>
+					<div class="code-block">
+						<pre>
+		int number = 42;  // これは数値型
+		String text = "こんにちは";  // これは文字列型
+						</pre>
+					</div>
+					<p>Javaでは、変数の型を明示的に宣言する必要があります。</p>
+					<p>以下に主要な型一覧を掲載します。</p>
+					<ul>
+						<li>整数型(byte, short, int, long)</li>
+						<li>浮動小数点型(float, double)</li>
+						<li>文字型(char)</li>
+						<li>真偽値型(boolean)</li>
+						<li>クラス型(class)</li>
+						<li>インターフェース型(interface)</li>
+						<li>配列型(array)</li>
+					</ul>
+					<br>
+					<h3>演算子</h3>
+					<h4>文字列演算子</h4>
+					<p>Javaでは、+演算子を用いて文字列を連結することができます。</p>
+					<div class="code-block">
+						<pre>
+		String text1 = "Hello";
+		String text2 = "World";
+		String text3 = text1 + text2;  // "HelloWorld"
+						</pre>
+					</div>
+					<h4>算術演算子</h4>
+					<p>Javaでは、+、-、*、/、%演算子を用いて算術演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number1 = 10;
+		int number2 = 3;
+		int number3 = number1 + number2;  // 13
+		int number4 = number1 - number2;  // 7
+		int number5 = number1 * number2;  // 30
+		int number6 = number1 / number2;  // 3
+		int number7 = number1 % number2;  // 1
+						</pre>
+					</div>
+					<p>また、++でインクリメント、--でデクリメントを表します。</p>
+					<div class="code-block">
+						<pre>
+		int number = 10;
+		number++;  // 11
+		number--;  // 10
+						</pre>
+					</div>
+					<h4>論理演算子</h4>
+					<p>Javaでは、&&、||演算子を用いて論理演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		boolean flag1 = true;
+		boolean flag2 = false;
+		boolean flag3 = flag1 && flag2;  // false
+		boolean flag4 = flag1 || flag2;  // true
+						</pre>
+					</div>
+					<h4>代入演算子</h4>
+					<p>Javaでは、=演算子を用いて代入演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number = 10;
+		number = 20;  // 20
+						</pre>
+					</div>
+					<p>また、+=、-=、*=、/=、%=演算子を用いて複合代入演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number = 10;
+		number += 5;  // 15
+		number -= 5;  // 5
+		number *= 5;  // 50
+		number /= 5;  // 2
+		number %= 5;  // 0
+						</pre>
+					</div>
+					<h4>比較演算子</h4>
+					<p>Javaでは、==、!=、>、<、>=、<=演算子を用いて比較演算を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number1 = 10;
+		int number2 = 20;
+		boolean flag1 = number1 == number2;  // false
+		boolean flag2 = number1 != number2;  // true
+		boolean flag3 = number1 > number2;  // false
+		boolean flag4 = number1 < number2;  // true
+		boolean flag5 = number1 >= number2;  // false
+		boolean flag6 = number1 <= number2;  // true
+						</pre>
+					</div>
+					<br>
+					<h3>if文</h3>
+					<p>Javaでは、if文を用いて条件分岐を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number = 10;
+		if (number > 0) {
+			System.out.println("正の数です");
+		} else if (number < 0) {
+			System.out.println("負の数です");
+		} else {
+			System.out.println("0です");
+		}
+						</pre>
+					</div>
+					<h3>switch文</h3>
+					<p>Javaでは、switch文を用いて条件分岐を行うことができます。</p>
+					<div class="code-block
+					">
+						<pre>
+		int number = 1;
+		switch (number) {
+			case 1:
+				System.out.println("1です");
+				break;
+			case 2:
+				System.out.println("2です");
+				break;
+			default:
+				System.out.println("それ以外です");
+				break;
+		}
+						</pre>
+					</div>
+					<h3>do文</h3>
+					<p>Javaでは、do文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		int number = 0;
+		do {
+			System.out.println(number);
+			number++;
+		} while (number < 3);
+						</pre>
+					</div>
+					<h3>while文</h3>
+					<p>Javaでは、while文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block
+					">
+						<pre>
+		int number = 0;
+		while (number < 3) {
+			System.out.println(number);
+			number++;
+		}
+						</pre>
+					</div>
+					<h3>for文</h3>
+					<p>Javaでは、for文を用いて繰り返し処理を行うことができます。</p>
+					<div class="code-block
+					">
+						<pre>
+		for (int number = 0; number < 3; number++) {
+			System.out.println(number);
+		}
+						</pre>
+					</div>
+					<h3>break文</h3>
+					<p>Javaでは、break文を用いて繰り返し処理を中断することができます。</p>
+					<div class="code-block">
+						<pre>
+		for (int number = 0; number < 3; number++) {
+			if (number == 1) {
+				break;
+			}
+			System.out.println(number);
+		}
+						</pre>
+					</div>
+					<br>
+					<h3>continue文</h3>
+					<p>Javaでは、continue文を用いて繰り返し処理をスキップすることができます。</p>
+					<div class="code-block">
+						<pre>
+		for (int number = 0; number < 3; number++) {
+			if (number == 1) {
+				continue;
+			}
+			System.out.println(number);
+		}
+						</pre>
+					</div>
+					<br>
+					<h3>配列</h3>
+					<p>Javaでは、配列を用いて複数の値を格納することができます。</p>
+					<div class="code-block">
+						<pre>
+		int[] array = {1, 2, 3, 4, 5};
+		System.out.println(array[0]);  // 1
+		System.out.println(array[1]);  // 2
+		System.out.println(array[2]);  // 3
+		System.out.println(array[3]);  // 4
+		System.out.println(array[4]);  // 5
+						</pre>
+					</div>
+					<p>また、配列の要素数はlengthプロパティで取得することができます。</p>
+					<div class="code-block">
+						<pre>
+		int[] array = {1, 2, 3, 4, 5};
+		System.out.println(array.length);  // 5
+						</pre>
+					</div>
+					<h4>多次元配列</h4>
+					<p>Javaでは、多次元配列を用いて複数の値を格納することができます。</p>
+					<div class="code-block">
+						<pre>
+		int[][] array = {{1, 2}, {3, 4}, {5, 6}};
+		System.out.println(array[0][0]);  // 1
+		System.out.println(array[0][1]);  // 2
+		System.out.println(array[1][0]);  // 3
+		System.out.println(array[1][1]);  // 4
+		System.out.println(array[2][0]);  // 5
+		System.out.println(array[2][1]);  // 6
+						</pre>
+					</div>
+					<br>
+					<h3>メソッド</h3>
+					<p>Javaでは、メソッドを用いて処理をまとめることができます。</p>
+					<div class="code-block">
+						<pre>
+		void sayHello() {
+			System.out.println("Hello");
+		}
+		sayHello();  // "Hello"
+						</pre>
+					</div>
+					<p>また、引数を用いてメソッドに値を渡すことができます。</p>
+					<div class="code-block">
+						<pre>
+		void sayHello(String name) {
+			System.out.println("Hello, " + name);
+		}
+		sayHello("Alice");  // "Hello, Alice"
+		sayHello("Bob");  // "Hello, Bob"
+						</pre>
+					</div>
+					<p>さらに、戻り値を用いてメソッドから値を返すことができます。</p>
+					<div class="code-block
+					">
+						<pre>
+		int add(int number1, int number2) {
+			return number1 + number2;
+		}
+		int result = add(1, 2);
+		System.out.println(result);  // 3
+						</pre>
+					</div>
+					<br>
+					<h3>クラス</h3>
+					<p>Javaでは、クラスを用いてオブジェクト指向プログラミングを行うことができます。</p>
+					<div class="code-block">
+						<pre>
+		class Person {
+			String name;
+			int age;
+			Person(String name, int age) {
+				this.name = name;
+				this.age = age;
+			}
+			void sayHello() {
+				System.out.println("Hello, " + name);
+			}	
+		}
+		Person person = new Person("Alice", 20);
+		person.sayHello();  // "Hello, Alice"
+						</pre>
+					</div>
+					<p>クラスには、フィールド(変数)とメソッド(関数)が含まれます。</p>
+					<p>また、クラスからインスタンス(オブジェクト)を生成することができます。</p>
+					<p>コンストラクタとは、そのクラスのインスタンスを生成するものです。</p>
+					<br>
+					<h3>その他</h3>
+					<li>Javaは、プラットフォームに依存しないために、独自のJava仮想マシン(Java Virtual Machine)で実行されます。このJava仮想マシンで実行できる言語はJVM系言語と呼ばれ、<a href = "https://kotlinlang.org">Kotlin</a>や<a href = "https://www.scala-lang.org">Scala</a>などがあります。</li>
+					<li>また、Javaはガベージコレクションが言語仕様に組み込まれています。これによって、プログラムをする際にメモリ管理周りで起きやすいミスを回避することができます。高級言語には大体ありますが、一方で<a href = "https://www.rust-lang.org">Rust</a>のように、所有権でメモリを管理する言語もあります(いや、Rustしか知らんけど...)。</li>
+					<li><a href = "https://www.oracle.com/jp/education/certification/jse17-73106-ja.html">オラクルが認定資格を発行しています。</a></li>
+				</div>
 			</div>
 		</div>
+		このページは作るのに大体JavaScript5時間Java7時間かかりました。合計12時間です。<br>
+		最終更新: 2024/08/13
 	</body>
 </html>
+
+<!-- 本当はインターフェースについても詳しくやるつもりだったんですが意味不明すぎて諦めました -->
