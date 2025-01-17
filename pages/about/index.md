@@ -48,8 +48,8 @@ permalink: "page/about"
 
 - [プログラミングを初めて4ヶ月弱の頃に作成したプログラム](https://github.com/2ufkpfb9daxnik/assignments5/tree/main)
 - [プログラミングを始めて8ヶ月の頃に作成したプログラム](https://github.com/2ufkpfb9daxnik/PoCS)
-- [プログラミングを始めて9ヶ月の頃に作成したプログラム](/page/old/hsrtemporarydictionaryje/)
-- [プログラミングを始めて10ヶ月の頃に作成したプログラム](/page/old/BreakingTheMaze/)
+- [プログラミングを始めて9ヶ月の頃に作成したプログラム](/page/old/hsrtemporarydictionaryje)
+- [プログラミングを始めて10ヶ月の頃に作成したプログラム](/page/old/BreakingTheMaze)
 - [2023年の文化祭で出したタイピングゲーム(複数人で制作)](https://yyf999999999.github.io/typingprot/pages/difficultySelecter)
 - [2024年の文化祭で出したパズルゲームのweb板(複数人で制作)](https://yuga-school.github.io/puzzlegame/Roguelikepuzzle.html)
 - [React学習用に作ったtodo管理](https://2ufkpfb9daxnik.github.io/react-todo-app/)
