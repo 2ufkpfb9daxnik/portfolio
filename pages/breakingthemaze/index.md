@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "迷路くずし"
-permalink: /jekyll-BreakingTheMaze/
+permalink: /page/old/BreakingTheMaze/
 ---
 
 [githubリポジトリ](https://github.com/2ufkpfb9daxnik/BreakingTheMaze)

@@ -2,7 +2,7 @@
 layout: page
 title: "2ufkpfb9daxnikは、私のgithubアカウント名です。"
 description: "githubアカウント名2ufkpfb9daxnikを持つユーザーの個人ページです。"
-permalink: /jekyll-portfolio/
+permalink: /page/old/jekyll-portfolio/
 keywords: "ポートフォリオ, プログラミング, 言語"
 ---
 

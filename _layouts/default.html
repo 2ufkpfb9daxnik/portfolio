@@ -14,7 +14,14 @@
             最終更新:{{ site.time | date: "%Y/%m/%d" }}
             <ul>
                 {% for page in site.pages %}
-                    {% if page.url contains "/portfolio/" %}
+                    {% if page.url contains "/page" and not page.url contains "/old" %}
+                        <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            <ul>
+                {% for page in site.pages %}
+                    {% if page.url contains "/old" %}
                         <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
                     {% endif %}
                 {% endfor %}

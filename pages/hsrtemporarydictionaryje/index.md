@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "崩壊：スターレイル簡易和英辞書"
-permalink: /jekyll-hsrtemporarydictionaryje/
+permalink: /page/old/jekyll-hsrtemporarydictionaryje/
 ---
 
 2024年2月に12時間位で制作した崩壊：スターレイルというゲームの簡易的な和英辞書です。[ここからアクセスできるgithubリポジトリ](https://github.com/2ufkpfb9daxnik/hsrtemporarydictionaryej)のdistファイル内にあるmain.exeを実行すれば動くはずです。ライセンスはLGPL3.0です。
