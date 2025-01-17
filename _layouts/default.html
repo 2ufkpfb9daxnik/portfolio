@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8">
+    <title>{{ page.title }}</title>
+    <meta name="description" content="{{ page.description }}">
+    <meta name="keywords" content="{{ page.keywords }}">
+    <link rel="stylesheet" href="{{ "/stylesheet.css" | relative_url }}">
+</head>
+<body>
+    <div class="container">
+        <div class="left-content">
+            <!-- 左側 -->
+            最終更新:{{ site.time | date: "%Y/%m/%d" }}
+            <ul>
+                {% for page in site.pages %}
+                    {% if page.url contains "/portfolio/" %}
+                        <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="main-content">
+            <!-- 中央 -->
+            {{ content }}
+        </div>
+        <div class="right-content">
+            <!-- 右側 -->
+        </div>
+    </div>
+</body>
+</html>
