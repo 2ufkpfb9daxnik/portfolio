@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "迷路くずし"
-permalink: /jekyll-portfolio/BreakingTheMaze/
+permalink: /portfolio/jekyll-BreakingTheMaze/
 ---
 
 BreakingTheMaze.exeを何らかの方法で実行すると開始します。はじめ左上に赤三角で表示されている自機を右下の青いゴールまでWASD操作で連れて行ってください。ゴールすると自機が黄色くなり、前方に白い枠が表示されます。この状態でスペースキーを押下すると緑の壁が消えます。この緑の壁をすべて消すとゲームクリアです。クリア時にすべて消すまでにかかった時間が表示されるので、好タイムを目指してがんばってください。
