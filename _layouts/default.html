@@ -14,7 +14,7 @@
             最終更新:{{ site.time | date: "%Y/%m/%d" }}
             <ul>
                 {% for page in site.pages %}
-                    {% if page.url contains "/page" and not page.url contains "/old" %}
+                    {% if page.url contains "/page" and page.url does not contain "/old" %}
                         <li><a href="{{ page.url | relative_url }}">{{ page.title }}</a></li>
                     {% endif %}
                 {% endfor %}
@@ -32,13 +32,11 @@
             {{ content }}
         </div>
         <div class="right-content">
-            <h1>jekyll導入前のページについて</h1>
-            <p>導入前のページは導入前のページへのリンクなどがありますが直すのが無理になったので直しません。</p>
-            <h1>名前</h1>
+            <h2>jekyll導入前のページについて</h2>
+            <p>導入前のページは導入前のページへのリンクなどがありますが直すのが無理になったので直しません。導入前のページはcssのlightgrayの背景に黒文字でした。リンクに/oldの入っているやつはそれを仮で移植したものです。</p>
+            <h2>名前</h2>
             <a href="https://github.com/2ufkpfb9daxnik">2ufkpfb9daxnikは、私のgithubアカウント名です。</a><br>
-					インターネット上で固定のハンドルネームを持つのを好まないため、なにかユーザー名を新しく決める必要がある際、それがふさわしいと思ったときには、ランダムな文字列を生成するwebサービスを利用しており、これもその一つです。
-
-            <!-- 右側 -->
+            インターネット上で固定のハンドルネームを持つのを好まないため、なにかユーザー名を新しく決める必要がある際、それがふさわしいと思ったときには、ランダムな文字列を生成するwebサービスを利用しており、これもその一つです。
         </div>
     </div>
 </body>
