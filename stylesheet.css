@@ -45,16 +45,14 @@ a:visited {
     box-sizing: border-box; /* 内側の余白をカラムのサイズに含める */
   }
 
-/* @media (max-width: 768px) {
+/* メディアクエリを使用してレスポンシブデザインを実現 */
+@media (max-width: 768px) {
   .container {
     flex-direction: column;
   }
   .left-content,
+  .main-content,
   .right-content {
-    order: 2;
-    }
-
-  .main-content {
-    order: 1;
+    max-width: 100%;
   }
-} */
+}
