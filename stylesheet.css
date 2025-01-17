@@ -2,6 +2,17 @@ body {
   background-color: #1a1a1a;
   color: #fff;
 }
+
+/* リンクのスタイル */
+a {
+  color: #1e90ff; /* 通常のリンクの色 */
+}
+
+a:visited {
+  color: #00ff00; /* 訪問済みリンクの色を蛍光緑に設定 */
+  /* color: #ff00ff;  訪問済みリンクの色をマゼンタに設定する場合はこちらを使用 */
+}
+
 /* 3つのカラムを生成 */
 .container {
     display: flex;
