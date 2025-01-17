@@ -1,5 +1,5 @@
 body {
-  background-color: #1a1a1a;
+  background-color: #3c3c3c;
   color: #fff;
 }
 
@@ -10,33 +10,48 @@ a {
 
 a:visited {
   color: #00ff00; /* 訪問済みリンクの色を蛍光緑に設定 */
-  /* color: #ff00ff;  訪問済みリンクの色をマゼンタに設定する場合はこちらを使用 */
 }
 
 /* 3つのカラムを生成 */
 .container {
   display: flex;
-  flex-wrap: wrap; /* 必要に応じてカラムを折り返す */
+  flex-wrap: wrap; /* カラムを折り返す */
 }
 
+/* 各カラムのデフォルトスタイル */
 .left-content,
 .main-content,
 .right-content {
-  flex: 1; /* デフォルトで均等に分ける */
+  flex: 1; /* 各カラムを均等に分割 */
   padding: 20px;
-  box-sizing: border-box; /* 内側の余白をカラムのサイズに含める */
+  box-sizing: border-box; /* 内側の余白を幅に含める */
 }
 
-/* メディアクエリを使用してレスポンシブデザインを実現 */
+/* メディアクエリでスマホ対応 */
 @media (max-width: 768px) {
   .container {
-    flex-direction: column;
+    flex-direction: column; /* カラムを縦並びに変更 */
   }
+
+  /* 順番を変更 */
+  .main-content {
+    order: 1; /* 最初に表示 */
+  }
+
+  .left-content {
+    order: 2; /* 次に表示 */
+  }
+
+  .right-content {
+    order: 3; /* 最後に表示 */
+  }
+
+  /* 幅を全て100%に設定 */
   .left-content,
   .main-content,
   .right-content {
-    flex: none; /* サイズの柔軟性を無効化 */
+    flex: none; /* 幅の柔軟性を無効化 */
     width: 100%; /* 各カラムを全幅にする */
-    max-width: 100%; /* 制約を解除 */
+    max-width: 100%;
   }
 }
