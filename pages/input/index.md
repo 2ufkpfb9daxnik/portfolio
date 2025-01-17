@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "文字入力について"
-permalink: /portfolio/jekyll-input/
+permalink: /jekyll-input/
 ---
 
 文字入力に興味があることは説明しましたが、ここではそれについて詳しく説明します。
