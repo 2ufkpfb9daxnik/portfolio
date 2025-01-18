@@ -6,7 +6,7 @@ permalink: "page/about"
 
 高専3年 情報科
 
-広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[どれくらいかというとAlternative Typing Contestに自作配列で提出する程度です。](https://www.youtube.com/watch?v=iKSnUOVDimM)最近は競技プログラミングにハマっています。ゲームも好きです。今は崩壊スターレイルがメインで、他にもちまちま[FTB Direwolf20](https://www.feed-the-beast.com/modpacks/119-ftb-presents-direwolf20-120)に色々追加したものとか、Splatoon3とかをやっています。
+広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[どれくらいかというとAlternative Typing Contestに自作配列で提出する程度です。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)最近は競技プログラミングにハマっています。ゲームも好きです。今は崩壊スターレイルがメインで、他にもちまちま[FTB Direwolf20](https://www.feed-the-beast.com/modpacks/119-ftb-presents-direwolf20-120)に色々追加したものとか、Splatoon3とかをやっています。
 
 各種リンク
 
