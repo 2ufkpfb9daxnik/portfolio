@@ -52,4 +52,5 @@ permalink: "page/about"
 - [プログラミングを始めて10ヶ月の頃に作成したプログラム](/page/old/BreakingTheMaze)
 - [2023年の文化祭で出したタイピングゲーム(複数人で制作)](https://yyf999999999.github.io/typingprot/pages/difficultySelecter)
 - [2024年の文化祭で出したパズルゲームのweb板(複数人で制作)](https://yuga-school.github.io/puzzlegame/Roguelikepuzzle.html)
+- [高専3年の実験で作った報告書](https://qiita.com/cjjj1s/items/f1f9d5e25bd5ae8d1c7f)
 - [React学習用に作ったtodo管理](https://2ufkpfb9daxnik.github.io/react-todo-app/)
