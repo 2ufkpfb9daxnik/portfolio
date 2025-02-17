@@ -4,7 +4,7 @@ title: "鷽"
 permalink: "page/"
 ---
 
-## 鷽
+## 鷽 (ウソと読む)
 
 [ここからアクセス](https://pyrrhula.vercel.app)
 
