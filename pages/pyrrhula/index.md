@@ -1,0 +1,27 @@
+---
+layout: page
+title: "鷽"
+permalink: "page/"
+---
+
+## 鷽
+
+[ここからアクセス](https://pyrrhula.vercel.app)
+
+[githubリポジトリ](https://github.com/2ufkpfb9daxnik/pyrrhula)
+
+レーティングのあるSNSです。投稿頻度によってレートがつきます。
+
+![レーティング](/portfolio/images/pyrrhula/rating.png)
+
+結構自由に絞れる検索機能があります。
+
+![検索機能](/portfolio/images/pyrrhula/search.png)
+
+ダイレクトメッセージがあります。
+
+![DM](/portfolio/images/pyrrhula/direct-message.png)
+
+フォロー関係グラフがあります。
+
+![フォロー関係グラフ](/portfolio/images/pyrrhula/follow-relation-graph.png)
