@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "鷽"
-permalink: "page/"
+permalink: "page/pyrrhula"
 ---
 
 ## 鷽 (ウソと読む)
