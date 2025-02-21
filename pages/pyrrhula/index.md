@@ -16,6 +16,10 @@ permalink: "page/pyrrhula"
 
 ![レーティング](/portfolio/images/pyrrhula/rating.png) -->
 
+タイムラインはこんな感じです。
+
+![タイムライン](/portfolio/images/pyrrhula/timeline.png)
+
 結構自由に絞れる検索機能があります。
 
 ![検索機能](/portfolio/images/pyrrhula/search.png)
