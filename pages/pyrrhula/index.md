@@ -10,11 +10,9 @@ permalink: "page/pyrrhula"
 
 [githubリポジトリ](https://github.com/2ufkpfb9daxnik/pyrrhula)
 
-シンプルなSNSです。
+レーティングのあるSNSです。投稿頻度などによって色がつきます。
 
-<!-- レーティングのあるSNSです。投稿頻度によってレートがつきます。
-
-![レーティング](/portfolio/images/pyrrhula/rating.png) -->
+![レーティング](/portfolio/images/pyrrhula/rating.png)
 
 タイムラインはこんな感じです。
 
@@ -24,12 +22,10 @@ permalink: "page/pyrrhula"
 
 ![検索機能](/portfolio/images/pyrrhula/search.png)
 
-<!-- ダイレクトメッセージがあります。
+ダイレクトメッセージがあります。
 
-![DM](/portfolio/images/pyrrhula/direct-message.png)
+![DM](/portfolio/images/pyrrhula/chat.png)
 
 フォロー関係グラフがあります。
 
-![フォロー関係グラフ](/portfolio/images/pyrrhula/follow-relation-graph.png) -->
-
-
+![フォロー関係グラフ](/portfolio/images/pyrrhula/followgraph.png)
