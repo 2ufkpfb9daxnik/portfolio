@@ -15,7 +15,7 @@ permalink: "page/about"
 
 ## できること
 
-基本上からできる順です 今も定期的に使う - 触ったことがある くらいの感覚です
+基本上からできる順です 今も定期的に使う - 触ったことがある くらいの感覚ですが、あんまり参考にならないかも
 
 - Python3
 - WSL Ubuntu
@@ -26,6 +26,8 @@ permalink: "page/about"
 - React
 - Next.js
 - prisma
+- vercel
+- [SATySFi](https://github.com/gfngfn/SATySFi)
 - [microCMS](https://microcms.io)
 - Unity
 - Apache HTTP Server
