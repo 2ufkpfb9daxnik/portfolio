@@ -1,60 +1,107 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head>
-    <meta charset="utf-8">
-    <title>{{ page.title }}</title>
-    <meta name="description" content="{{ page.description }}">
-    <meta name="keywords" content="{{ page.keywords }}">
-    <link rel="stylesheet" href="{{ "/stylesheet.css" | relative_url }}">
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mainContent = document.querySelector('.main-content');
-            const rightContent = document.querySelector('.right-content');
-            const headings = mainContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
-            
-            if (headings.length > 0) {
-                const tocTitle = document.createElement('h3');
-                tocTitle.textContent = '目次';
-                rightContent.appendChild(tocTitle);
+    <head>
+        <meta charset="utf-8">
+        <title>{{ page.title }}</title>
+        <meta name="description" content="{{ page.description }}">
+        <meta name="keywords" content="{{ page.keywords }}">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="{{ "/stylesheet.css" | relative_url }}">
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const mainContent = document.querySelector('.main-content');
+                const rightContent = document.querySelector('.right-content');
+                const headings = mainContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
                 
-                const tocList = document.createElement('ul');
-                tocList.className = 'toc-list';
-                rightContent.appendChild(tocList);
-                
-                headings.forEach(function(heading, index) {
-                    const id = 'heading-' + index;
-                    heading.id = id;
+                if (headings.length > 0) {
+                    const tocTitle = document.createElement('h3');
+                    tocTitle.textContent = '目次';
+                    rightContent.appendChild(tocTitle);
                     
-                    const listItem = document.createElement('li');
-                    listItem.className = 'toc-item toc-' + heading.tagName.toLowerCase();
+                    const tocList = document.createElement('ul');
+                    tocList.className = 'toc-list';
+                    rightContent.appendChild(tocList);
                     
-                    const link = document.createElement('a');
-                    link.href = '#' + id;
-                    link.textContent = heading.textContent;
-                    
-                    listItem.appendChild(link);
-                    tocList.appendChild(listItem);
-                });
+                    headings.forEach(function(heading, index) {
+                        const id = 'heading-' + index;
+                        heading.id = id;
+                        
+                        const listItem = document.createElement('li');
+                        listItem.className = 'toc-item toc-' + heading.tagName.toLowerCase();
+                        
+                        const link = document.createElement('a');
+                        link.href = '#' + id;
+                        link.textContent = heading.textContent;
+                        
+                        listItem.appendChild(link);
+                        tocList.appendChild(listItem);
+                    });
+                }
+            });
+        </script>
+        
+        <style>
+            .toc-list {
+                padding-left: 0;
             }
-        });
-    </script>
-    
-    <style>
-        .toc-list {
-            padding-left: 0;
-        }
-        .toc-item {
-            list-style-type: none;
-            margin-bottom: 8px;
-        }
-        .toc-h1 { margin-left: 0; }
-        .toc-h2 { margin-left: 10px; }
-        .toc-h3 { margin-left: 20px; }
-        .toc-h4 { margin-left: 30px; }
-        .toc-h5 { margin-left: 40px; }
-        .toc-h6 { margin-left: 50px; }
-    </style>
-</head>
+            .toc-item {
+                list-style-type: none;
+                margin-bottom: 8px;
+            }
+            .toc-h1 { margin-left: 0; }
+            .toc-h2 { margin-left: 10px; }
+            .toc-h3 { margin-left: 20px; }
+            .toc-h4 { margin-left: 30px; }
+            .toc-h5 { margin-left: 40px; }
+            .toc-h6 { margin-left: 50px; }
+            
+            /* レスポンシブデザイン用のスタイル */
+            .container {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            
+            .main-content {
+                flex: 2;
+                order: 1;
+                padding: 0 15px;
+            }
+            
+            .left-content {
+                flex: 1;
+                order: 2;
+                padding: 0 15px;
+            }
+            
+            .right-content {
+                flex: 1;
+                order: 3;
+                padding: 0 15px;
+            }
+            
+            /* モバイル表示用のスタイル */
+            @media (max-width: 768px) {
+                .container {
+                    flex-direction: column;
+                }
+                
+                .main-content {
+                    order: 1;
+                    width: 100%;
+                }
+                
+                .left-content {
+                    order: 2;
+                    width: 100%;
+                }
+                
+                .right-content {
+                    /* 小さい画面では目次を非表示 */
+                    display: none;
+                }
+            }
+        </style>
+    </head>
 <body>
     <div class="container">
         <div class="left-content">
