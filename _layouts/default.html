@@ -38,8 +38,7 @@
                     });
                 }
             });
-        </script>
-        
+                </script>
         <style>
             .toc-list {
                 padding-left: 0;
@@ -55,49 +54,75 @@
             .toc-h5 { margin-left: 40px; }
             .toc-h6 { margin-left: 50px; }
             
+            html, body {
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            
+            body {
+                overflow: hidden; /* 本体のスクロールバーを非表示 */
+            }
+            
             /* レスポンシブデザイン用のスタイル */
             .container {
                 display: flex;
                 flex-wrap: wrap;
-            }
-            
-            .main-content {
-                flex: 2;
-                order: 1;
-                padding: 0 15px;
+                height: 100vh; /* ビューポート全体の高さを使用 */
             }
             
             .left-content {
                 flex: 1;
-                order: 2;
+                order: 1;
                 padding: 0 15px;
+                overflow-y: auto; /* 個別スクロールバー */
+                height: 100%; /* コンテナの高さいっぱいに */
+            }
+            
+            .main-content {
+                flex: 2;
+                order: 2; 
+                padding: 0 15px;
+                overflow-y: auto; /* 個別スクロールバー */
+                height: 100%; /* コンテナの高さいっぱいに */
             }
             
             .right-content {
                 flex: 1;
                 order: 3;
                 padding: 0 15px;
+                overflow-y: auto; /* 個別スクロールバー */
+                height: 100%; /* コンテナの高さいっぱいに */
             }
             
             /* モバイル表示用のスタイル */
             @media (max-width: 768px) {
                 .container {
                     flex-direction: column;
+                    height: auto; /* モバイルでは高さを自動に */
+                    overflow-y: auto; /* コンテナ全体をスクロール可能に */
+                }
+                
+                body {
+                    overflow-y: auto; /* モバイルではbodyをスクロール可能に */
                 }
                 
                 .main-content {
-                    order: 1;
+                    order: 1; 
                     width: 100%;
+                    height: auto; /* モバイルでは高さを自動に */
+                    overflow: visible; /* モバイルではスクロールバーなし */
                 }
                 
                 .left-content {
                     order: 2;
                     width: 100%;
+                    height: auto; /* モバイルでは高さを自動に */
+                    overflow: visible; /* モバイルではスクロールバーなし */
                 }
                 
                 .right-content {
-                    /* 小さい画面では目次を非表示 */
-                    display: none;
+                    display: none; /* 非表示 */
                 }
             }
         </style>
