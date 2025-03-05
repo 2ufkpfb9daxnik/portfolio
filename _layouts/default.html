@@ -6,11 +6,63 @@
     <meta name="description" content="{{ page.description }}">
     <meta name="keywords" content="{{ page.keywords }}">
     <link rel="stylesheet" href="{{ "/stylesheet.css" | relative_url }}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mainContent = document.querySelector('.main-content');
+            const rightContent = document.querySelector('.right-content');
+            const headings = mainContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            
+            if (headings.length > 0) {
+                const tocTitle = document.createElement('h3');
+                tocTitle.textContent = '目次';
+                rightContent.appendChild(tocTitle);
+                
+                const tocList = document.createElement('ul');
+                tocList.className = 'toc-list';
+                rightContent.appendChild(tocList);
+                
+                headings.forEach(function(heading, index) {
+                    const id = 'heading-' + index;
+                    heading.id = id;
+                    
+                    const listItem = document.createElement('li');
+                    listItem.className = 'toc-item toc-' + heading.tagName.toLowerCase();
+                    
+                    const link = document.createElement('a');
+                    link.href = '#' + id;
+                    link.textContent = heading.textContent;
+                    
+                    listItem.appendChild(link);
+                    tocList.appendChild(listItem);
+                });
+            }
+        });
+    </script>
+    
+    <style>
+        .toc-list {
+            padding-left: 0;
+        }
+        .toc-item {
+            list-style-type: none;
+            margin-bottom: 8px;
+        }
+        .toc-h1 { margin-left: 0; }
+        .toc-h2 { margin-left: 10px; }
+        .toc-h3 { margin-left: 20px; }
+        .toc-h4 { margin-left: 30px; }
+        .toc-h5 { margin-left: 40px; }
+        .toc-h6 { margin-left: 50px; }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="left-content">
             <!-- 左側 -->
+            <h2>jekyll導入前のページについて</h2>
+            <p>導入前のページは導入前のページへのリンクなどがありますが直すのが無理になったので放置しています。導入前のページはcssのlightgrayの背景に黒文字でした。リンクに/oldの入っているやつはそれを仮で移植したものです。</p>
+            <p><a href="https://github.com/2ufkpfb9daxnik">2ufkpfb9daxnikは、私のgithubアカウント名です。</a>
+            インターネット上で固定のハンドルネームを持つのを好まないため、なにかユーザー名を新しく決める必要がある際、それがふさわしいと思ったときには、ランダムな文字列を生成するwebサービスを利用しており、これもその一つです。</p>
             最終更新:{{ site.time | date: "%Y/%m/%d" }}
             <ul>
                 {% for page in site.pages %}
@@ -34,11 +86,7 @@
             {{ content }}
         </div>
         <div class="right-content">
-            <h2>jekyll導入前のページについて</h2>
-            <p>導入前のページは導入前のページへのリンクなどがありますが直すのが無理になったので放置しています。導入前のページはcssのlightgrayの背景に黒文字でした。リンクに/oldの入っているやつはそれを仮で移植したものです。</p>
-            <h2>名前</h2>
-            <a href="https://github.com/2ufkpfb9daxnik">2ufkpfb9daxnikは、私のgithubアカウント名です。</a><br>
-            インターネット上で固定のハンドルネームを持つのを好まないため、なにかユーザー名を新しく決める必要がある際、それがふさわしいと思ったときには、ランダムな文字列を生成するwebサービスを利用しており、これもその一つです。
+
         </div>
     </div>
 </body>
