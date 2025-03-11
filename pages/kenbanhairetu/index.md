@@ -1,5 +1,5 @@
 ---
-layout: page
+layout: 
 title: "新配列botの投稿候補"
 permalink: "page/kenbanhairetu"
 ---
