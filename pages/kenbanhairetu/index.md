@@ -6,6 +6,8 @@ permalink: "page/kenbanhairetu"
 
 ## 新配列botの投稿候補
 
+[新配列bot](https://bsky.app/profile/kenbanhairetu.bsky.social)
+
 追加・修正希望などはblueskyの返信かチャットでお願いします
 
 ```gas
