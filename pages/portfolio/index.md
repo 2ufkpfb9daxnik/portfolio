@@ -5,6 +5,7 @@ description: "githubアカウント名2ufkpfb9daxnikを持つユーザーの個�
 permalink: /page/old/portfolio/
 keywords: "ポートフォリオ, プログラミング, 言語"
 ---
+# 古いページですが残してあります
 
 ## わたしについて
 
