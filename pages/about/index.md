@@ -57,3 +57,4 @@ permalink: "page/about"
 - [高専3年の実験で作った報告書](https://qiita.com/cjjj1s/items/f1f9d5e25bd5ae8d1c7f)
 - [React学習用に作ったtodo管理](https://2ufkpfb9daxnik.github.io/react-todo-app/)
 - [ReactとNext.jsで作成しデータベースをSupabaseで、ホスティングをVercelでおこなっているSNS](https://pyrrhula.vercel.app)
+- [2024年度のnaist stellaプログラムで作った手書き数式のデータセット](https://github.com/2ufkpfb9daxnik/handwrittsen-formula)
