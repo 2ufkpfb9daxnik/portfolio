@@ -63,6 +63,12 @@
             body {
                 overflow: hidden; /* 本体のスクロールバーを非表示 */
             }
+
+            /* スクロールバーを非表示にするスタイル */
+            .left-content, .main-content, .right-content {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+            }
             
             /* レスポンシブデザイン用のスタイル */
             .container {
