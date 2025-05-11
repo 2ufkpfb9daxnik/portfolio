@@ -58,4 +58,4 @@ permalink: "page/about"
 - [React学習用に作ったtodo管理](https://2ufkpfb9daxnik.github.io/react-todo-app/)
 - [ReactとNext.jsで作成しデータベースをSupabaseで、ホスティングをVercelでおこなっているSNS](https://pyrrhula.vercel.app)
 - [応用専門PBL1という授業で作成した学食注文システム](https://s-ao213.github.io/PBL/User/) ユーザー名を123、パスワードを456として入力することでテストユーザーでログインできます
-- [2024年度のnaist stellaプログラムで作った手書き数式のデータセット](https://github.com/2ufkpfb9daxnik/handwrittsen-formula)
+- [2024年度のnaist stellaプログラムで作った手書き数式のデータセット](https://github.com/2ufkpfb9daxnik/handwritten-formula)
