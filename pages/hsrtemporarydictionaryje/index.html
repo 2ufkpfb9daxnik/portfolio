@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>崩壊：スターレイル簡易和英辞書</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc">
+        
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+      <div id="content-wrapper"><p>作成: 2025-05-19 21:46</p>
+<p>2024年2月に12時間位で制作した崩壊：スターレイルというゲームの簡易的な和英辞書です。<a
+href="https://github.com/2ufkpfb9daxnik/hsrtemporarydictionaryej">ここからアクセスできるgithubリポジトリ</a>のdistファイル内にあるmain.exeを実行すれば動くはずです。ライセンスはLGPL3.0です。</p>
+<p>左の上位タブから見たい項目を探してください。戦闘面について、英語で検索したいときに使うのを想定して作ったので、多分ない言葉もたくさんあると思いますが、戦略とか攻略を調べるには事足ると思います。簡易的な解説を以下に記します。</p>
+<p>キャラクタータブには、プレイアブルキャラクター(と現時点で未実装であるが実装予定である黄泉、アベンチュリン、ギャラガー)が表示されます。開拓者は壊滅/存護の区別をしていません。並びは逆hoyowiki順(おそらく実装順)になっています。</p>
+<p>敵タブには、現時点で戦える敵が表示されます。カフカ、ブローニャなどのプレイアブルキャラクターであるが敵にもなるキャラクターも表示されます。並びは逆hoyowiki順(おそらく実装順)です。</p>
+<p>光円錐タブには、現時点で利用可能もしくは今後利用可能になるであろう光円錐が表示されます。並びは逆hoyowiki順(おそらく実装順)です。</p>
+<p>遺物タブには、現時点で利用可能な遺物が表示されます。並びは逆hoyowiki順(おそらく実装順？)です。</p>
+<p>属性タブには、プレイアブルキャラクターに1つ付与される属性が表示されます。</p>
+<p>運命タブには、プレイアブルキャラクターに1つ付与される運命、模擬宇宙で選択可能な運命、<a
+href="https://honkai-star-rail.fandom.com/wiki/Path">そうではないがhsrfandomwikiにて言及されている運命</a>がこの記述順で表示されます。</p>
+<p>模擬宇宙タブには、模擬宇宙に関連する祝福、奇物、(黄金と機械の)カスタムサイコロ、サイコロ面のタブが表示されます。
+祝福タブには、それぞれの運命のタブが表示され、見たい運命を選択すると逆hoyowiki順(レアリティ順)に祝福が表示されます。
+奇物タブには、奇物が逆hoyowiki順で表示されます。
+カスタムサイコロタブでは、カスタムサイコロとして選択可能であるもしくはある程度模擬宇宙:黄金と機械を進めると選択可能になるカスタムサイコロの一覧を見ることができます。
+サイコロ面タブでは、サイコロ面として選択可能であるもしくはある程度模擬宇宙:黄金と機械を進めると選択可能になるサイコロ面の一覧を見ることができます。</p>
+<p>実際に実行して見ることができるシーンのスクリーンショットを3枚添付します。</p>
+<p><img src="./2024-02-26_02h39_51.png" alt="スクリーンショット1" />
+<img src="./2024-02-26_02h40_00.png" alt="スクリーンショット2" /> <img
+src="./2024-02-26_02h40_22.png" alt="スクリーンショット3" /></p>
+<p>最終更新: 2025-07-28 02:41</p></div>
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <script>
+    // ダークモード機能
+    function toggleTheme() {
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        body.classList.remove('theme-dark');
+        body.classList.add('theme-tsuki');
+      } else {
+        body.classList.remove('theme-tsuki');
+        body.classList.add('theme-dark');
+      }
+      
+      // 設定を保存
+      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+      document.cookie = `theme=; path=/; max-age=31536000`; // 1年間保存
+    }
+    
+    // ページ読み込み時にテーマを復元
+    function loadTheme() {
+      const cookies = document.cookie.split(';');
+      let theme = 'tsuki'; // デフォルト
+      
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'theme') {
+          theme = value;
+          break;
+        }
+      }
+      
+      const body = document.body;
+      body.classList.remove('theme-tsuki', 'theme-dark');
+      body.classList.add(`theme-`);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // テーマを先に読み込み
+      loadTheme();
+      
+      const contentWrapper = document.getElementById('content-wrapper');
+      const content = contentWrapper.innerHTML;
+      
+      // h2とh3で分割するための正規表現
+      const sectionRegex = /(<h[23][^>]*>.*?<\/h[23]>)/gi;
+      
+      // コンテンツをh2/h3で分割
+      const parts = content.split(sectionRegex);
+      let newHTML = '';
+      let currentSection = '';
+      let inSection = false;
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // h2またはh3の見出しかチェック
+        if (part.match(/^<h[23]/i)) {
+          // 前のセクションを閉じる
+          if (inSection && currentSection.trim()) {
+            newHTML += '<div class="container-section">' + currentSection + '</div>';
+          }
+          // 新しいセクションを開始
+          currentSection = part;
+          inSection = true;
+        } else if (part.trim()) {
+          // 通常のコンテンツ
+          if (inSection) {
+            currentSection += part;
+          } else {
+            // 最初のセクション（見出しなし）
+            if (!newHTML && part.trim()) {
+              newHTML += '<div class="container-section">' + part + '</div>';
+            }
+          }
+        }
+      }
+      
+      // 最後のセクションを閉じる
+      if (inSection && currentSection.trim()) {
+        newHTML += '<div class="container-section">' + currentSection + '</div>';
+      }
+      
+      // 結果が空の場合は元のコンテンツを1つのセクションとして表示
+      if (!newHTML.trim()) {
+        newHTML = '<div class="container-section">' + content + '</div>';
+      }
+      
+      contentWrapper.innerHTML = newHTML;
+    });
+  </script>
+</body>
+</html>

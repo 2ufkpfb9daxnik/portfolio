@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>迷路くずし</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc">
+        
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+      <div id="content-wrapper"><p>作成: 2025-05-19 21:46</p>
+<p><a
+href="https://github.com/2ufkpfb9daxnik/BreakingTheMaze">githubリポジトリ</a>
+BreakingTheMaze.exeを何らかの方法で実行すると開始します。はじめ左上に赤三角で表示されている自機を右下の青いゴールまでWASD操作で連れて行ってください。ゴールすると自機が黄色くなり、前方に白い枠が表示されます。この状態でスペースキーを押下すると緑の壁が消えます。この緑の壁をすべて消すとゲームクリアです。クリア時にすべて消すまでにかかった時間が表示されるので、好タイムを目指してがんばってください。
+起動するとコンソール画面が開くと思いますがこれはpyinstallerでnoconsoleオプションを付けてもウィルス対策ソフトに引っかかるからで、その対処も面倒くさいのでやらなかったためです。多分消しても遊べます。
+<a href="https://gamingpc.one/dev/python-pyinstaller/">(参考までに)</a>
+2024年1月に作成しました。 <img src="./BreakingTheMaze_start.png"
+alt="BreakingTheMaze_start.png" /> <img
+src="./BreakingTheMaze_middle.png" alt="BreakingTheMaze_middle.png" />
+<img src="./BreakingTheMaze_finish.png"
+alt="BreakingTheMaze_finish.png" />
+<!-- <p>ボンバーマンとかパックマンから着想を得ました。本当は似たような感じの生け垣ファイヤーというのを作ろうとしていましたが(壁が緑色なのはその名残)、時間がなかったのと、あとタイムを追求する遊びが(迷路はどうしてもゴールから遡れば一発でわかって面白くないという点から焦点をずらしているので)意外と面白かったのでこういうふうになりました。やり直し機能をつけてグラフィックがなんとかなって自動で生成できるようになってタイムランキングをつけてやれば結構真面目に遊べると思います。壁を崩す方法のバリエーションがあってもおもしろそうです。やりませんけど。</p> --></p>
+<p>最終更新: 2025-07-28 02:42</p></div>
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <script>
+    // ダークモード機能
+    function toggleTheme() {
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        body.classList.remove('theme-dark');
+        body.classList.add('theme-tsuki');
+      } else {
+        body.classList.remove('theme-tsuki');
+        body.classList.add('theme-dark');
+      }
+      
+      // 設定を保存
+      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+      document.cookie = `theme=; path=/; max-age=31536000`; // 1年間保存
+    }
+    
+    // ページ読み込み時にテーマを復元
+    function loadTheme() {
+      const cookies = document.cookie.split(';');
+      let theme = 'tsuki'; // デフォルト
+      
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'theme') {
+          theme = value;
+          break;
+        }
+      }
+      
+      const body = document.body;
+      body.classList.remove('theme-tsuki', 'theme-dark');
+      body.classList.add(`theme-`);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // テーマを先に読み込み
+      loadTheme();
+      
+      const contentWrapper = document.getElementById('content-wrapper');
+      const content = contentWrapper.innerHTML;
+      
+      // h2とh3で分割するための正規表現
+      const sectionRegex = /(<h[23][^>]*>.*?<\/h[23]>)/gi;
+      
+      // コンテンツをh2/h3で分割
+      const parts = content.split(sectionRegex);
+      let newHTML = '';
+      let currentSection = '';
+      let inSection = false;
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // h2またはh3の見出しかチェック
+        if (part.match(/^<h[23]/i)) {
+          // 前のセクションを閉じる
+          if (inSection && currentSection.trim()) {
+            newHTML += '<div class="container-section">' + currentSection + '</div>';
+          }
+          // 新しいセクションを開始
+          currentSection = part;
+          inSection = true;
+        } else if (part.trim()) {
+          // 通常のコンテンツ
+          if (inSection) {
+            currentSection += part;
+          } else {
+            // 最初のセクション（見出しなし）
+            if (!newHTML && part.trim()) {
+              newHTML += '<div class="container-section">' + part + '</div>';
+            }
+          }
+        }
+      }
+      
+      // 最後のセクションを閉じる
+      if (inSection && currentSection.trim()) {
+        newHTML += '<div class="container-section">' + currentSection + '</div>';
+      }
+      
+      // 結果が空の場合は元のコンテンツを1つのセクションとして表示
+      if (!newHTML.trim()) {
+        newHTML = '<div class="container-section">' + content + '</div>';
+      }
+      
+      contentWrapper.innerHTML = newHTML;
+    });
+  </script>
+</body>
+</html>

@@ -1,27 +1,177 @@
 <!DOCTYPE html>
 <html lang="ja">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<title>ようこそ</title>
-		<link rel="stylesheet" href="stylesheet.css">
-	</head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2ufkpfb9daxnik</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc">
+        <!-- それぞれのページへのリンク -->
+         <ul>
+            <li><a href="pages/madelayout/">これまでに作った配列</a></li>
+            <li><a href="pages/javascriptVSjava/">JavaScriptとJavaの違い</a></li>
+            <li><a href="template/">テンプレート</a></li>
+            <li><a href="pages/about/">紹介</a></li>
+                     <li><a href="pages/breakingthemaze/">迷路くずし</a></li>
 
-	<body>
-		<div class="container">
-			<div class="left-content">
-				<!-- 左側 -->
-				最終更新:2025/01/18
-			</div>
-			<div class="main-content">
-				<!-- 中央 -->
-				このサイトはwindows版 vivaldi6.6にて動作を確認しています。<br>
-				<h1><a href="https://2ufkpfb9daxnik.github.io/portfolio/page/about">入る</a></h1>
-			</div>
-			<div class="right-content">
-				<!-- 右側 -->
-			</div>
-		</div>
-	</body>
+                     <li><a href="pages/hsrtemporarydictionaryje/">崩壊：スターレイル簡易和英辞書</a></li>
+
+
+                     <li><a href="pages/input/">文字入力について</a></li>
+
+
+
+                     <li><a href="pages/portfolio/">2ufkpfb9daxnikは、私のgithubアカウント名です。</a></li>
+
+
+
+
+                     <li><a href="pages/sample/">サンプル</a></li>
+
+
+
+
+
+         </ul>
+      </div>
+    </nav>
+    <main class="container">
+      <div class="home-top">
+        <a href="index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+        <p>新JIS配列や月配列の紹介で有名な<a href="https://jisx6004.client.jp/index.html">jisx6004.client.jp</a>のデザインが好きなのでパクりました。</p>
+      <div class="home-bottom"><a href="index.html">home</a></div>
+    </main>
+    
+    <!-- スマホ用の記事リンク表示 -->
+    <div class="mobile-links-container">
+      <h2>記事一覧</h2>
+      <ul class="mobile-links">
+        <li><a href="pages/madelayout/">これまでに作った配列</a></li>
+        <li><a href="pages/javascriptVSjava/">JavaScriptとJavaの違い</a></li>
+        <li><a href="template/">テンプレート</a></li>
+        <li><a href="pages/about/">紹介</a></li>
+        <li><a href="pages/pyrrhula/">鷽</a></li>
+                  <li><a href="pages/breakingthemaze/">迷路くずし</a></li>
+
+              <li><a href="pages/breakingthemaze/">迷路くずし</a></li>
+
+
+                  <li><a href="pages/hsrtemporarydictionaryje/">崩壊：スターレイル簡易和英辞書</a></li>
+
+
+
+              <li><a href="pages/hsrtemporarydictionaryje/">崩壊：スターレイル簡易和英辞書</a></li>
+
+
+
+
+                  <li><a href="pages/input/">文字入力について</a></li>
+
+
+
+
+
+              <li><a href="pages/input/">文字入力について</a></li>
+
+
+
+
+
+
+                  <li><a href="pages/portfolio/">2ufkpfb9daxnikは、私のgithubアカウント名です。</a></li>
+
+
+
+
+
+
+
+              <li><a href="pages/portfolio/">2ufkpfb9daxnikは、私のgithubアカウント名です。</a></li>
+
+
+
+
+
+
+
+
+                  <li><a href="pages/sample/">サンプル</a></li>
+
+
+
+
+
+
+
+
+
+              <li><a href="pages/sample/">サンプル</a></li>
+
+
+
+
+
+
+
+
+
+
+      </ul>
+      </div>
+    </div>
+
+  <script>
+    // ダークモード機能
+    function toggleTheme() {
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        body.classList.remove('theme-dark');
+        body.classList.add('theme-tsuki');
+      } else {
+        body.classList.remove('theme-tsuki');
+        body.classList.add('theme-dark');
+      }
+      
+      // 設定を保存
+      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+      document.cookie = `theme=${currentTheme}; path=/; max-age=31536000`; // 1年間保存
+    }
+    
+    // ページ読み込み時にテーマを復元
+    function loadTheme() {
+      const cookies = document.cookie.split(';');
+      let theme = 'tsuki'; // デフォルト
+      
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'theme') {
+          theme = value;
+          break;
+        }
+      }
+      
+      const body = document.body;
+      body.classList.remove('theme-tsuki', 'theme-dark');
+      body.classList.add(`theme-${theme}`);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadTheme();
+    });
+  </script>
+</body>
 </html>
+
+
+
 

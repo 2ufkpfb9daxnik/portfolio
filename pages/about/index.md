@@ -1,7 +1,5 @@
 ---
-layout: page
 title: "紹介"
-permalink: "page/about"
 ---
 
 高専4年 情報科

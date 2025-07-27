@@ -1,0 +1,510 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    "http://www.w3.org/TR/html4/loose.dtd">
+<html lang="ja">
+<head>
+<title>「月」 --- 中指シフト新JIS配列</title>
+<meta http-equiv="Content-Type" content="text/html; charset=Shift_JIS">
+<link rel="stylesheet" href="sinjis.css" type="text/css">
+<link rev="made" href="mailto:jisx6004@@csc.ne.jp">
+<link rel="START">
+<link rel="NEXT" href="mayu.html">
+<!--自動収集spam避けのため、mailアドレスに余分な@を入れています。 -->
+</head>
+<body class="tsuki"><script type="text/javascript" charset="utf-8" src="//asumi.shinobi.jp/encount"></script><div style="text-align: center;"><div style="display: inline-block; position: relative; z-index: 9999;"><script type="text/javascript" charset="utf-8" src="//asumi.shinobi.jp/fire?f=435"></script><script type="text/javascript" charset="utf-8" src="/__sys__inactive_message.js"></script></div></div>
+<p class="banner"><img alt="「月2-263」配列図" src="data/tsuki_motoyacedar.gif" width="600" height="200"></p>
+<p><a href="index.html">Home</a></p>
+	
+<h1><a name="top">中指前置シフト新JIS「月配列」</a></h1>
+<ul class="menu">
+  <li><a href="#nanika">「月配列」とは</a> 
+  <li><a href="#houhou">「月配列」を使うには</a>
+<li><a href="#hikaku">他方式との比較</a>
+  <li><a href="#file">設定ファイル</a>
+  <li><a href="#hasei">色々な「月配列」</a>
+<li><a href="#furoku">付録</a></li>
+</ul>
+<div class="con"> 
+  <h2><a name="nanika">中指前置シフト新JIS「月配列」とは</a></h2>
+  <div class=" pad"> 
+    <h3>「月配列」って?</h3>
+    <p>2chの、パソコン一般板・新JISスレッドで生まれた日本語入力用カナ系配列です。「新JIS配列に中指シフトを組み合わせたらどうなる?」 初めは実験的な配列として誕生しました。その後いろいろな人の手によって改良が加えられ、ひとまず2-263式と呼ばれる配列が完成しました。</p>
+  </div>
+  <div class=" pad">
+    <h3>なぜ中指前置(プリフィクス)シフトか</h3>
+    <p>シフトキーを中指ホームポジションにおくという画期的な方式は、冨樫 雅文氏が考案し、花配列に採用されています。中指にシフトをおくことの利点は<a href="http://homepage3.nifty.com/togasi/hana_no_kuni/index.html" class="external">花のページ</a>を参照してください。(私はセンターシフト方式も捨てがたいと思っているので富樫氏に全面的に同意するわけではありませんけど……) 
+    </p>
+    <p>特にローマ字入力出身者の場合、日本語入力中の文字キー領域外のシフト操作に抵抗を覚える人もいます。<span class="kanki">中指前置シフト</span>であればその問題がありません。</p>
+	<p>「月」(花もですが)は、「<cite>出現頻度が高いカナは1打でうち、出現頻度が少ないカナは2打で打つ方式</cite>」です。(<a href="http://pc3.2ch.net/test/read.cgi/pc/1038483398/443-">よろしければ配列について教えろ 
+	  その2</a>より)</p>
+	<div class="column"> 
+	  <h4>前置シフト(プリフィクスシフト)</h4>
+	  <p>通常の「シフトキー」でのシフトは、キーを押している間に働きます。</p>
+	  <p>シフト押す → キー押す → キー離す → シフト離す</p>
+	  <p>これに対してプリフィックスシフトというのは、シフトに使うキーを押した後、次のキーにシフトがかかります。</p>
+	  <p>シフト押す → シフト離す → キー押す → キー離す</p>
+      <p>ローマ字入力で、子音を前置シフトだと捉える事も出来ます。(母音を後置シフトだととらえることも可能。)</p>
+    </div>
+	<h3>中指前置シフト新JIS「月配列」の特徴</h3>
+    <p>花配列で採用された中指前置(プリフィクス)シフトですが、花配列には新JIS配列に比べていくつかの短所とも言える点があります。(新JIS配列については<a href="jisx6004.html">新JISのページ</a>を参照)</p>
+    <ul>
+      <li>「新JIS配列」に比べて下段をよく使う 
+      <li>「新JIS配列」に比べて同手跳躍、同指異鍵、左手縦連などの打ちにくい打鍵が多い。</li>
+    </ul>
+    <p>そこで生まれたのが、新JIS配列の利点「打ちにくい打鍵が少ない」「下段利用率が比較的少ない」と、「花配列」の持つ「文字キー領域に専念できる」という長所を併せ持つハイブリッド配列、中指新JIS配列「月」です。 
+    <p>中指新JIS配列「月」の一般的な特徴は以下の通り。
+<ul>
+      <li>下段利用率は新JIS並みに低く 
+      <li>同手跳躍、同指異鍵、左手縦連などの打ちにくい打鍵は新JIS並みに低く 
+      <li>左右交互打鍵率は花並みに高く 
+      <li>打鍵数は花並み</li>
+    </ul>
+    <p>ここで「一般的な特徴」と言ったのには理由があります。実は「月」には一つの定まった配列がありません。ハードウェアや専用ソフトに依存せず、キーカスタマイズソフトで実装するので配列を固定させる必要がありません。<a href="http://pc3.2ch.net/test/read.cgi/pc/1055763380/" class="external">2ちゃんねる</a>という匿名掲示板生まれと言うこともあり、現状はみんなで大まかな仕様を探りつつ、それぞれが<a href="#hasei">私家版</a>を使っています。 
+    <p>代表例にはこういうものがあります。初めての方には2-263式をお勧めします。ローマ字入力者の場合、濁点もプリフィクスシフトの方が馴染みやすいかも知れません。当サイトで<a href="#file">菱用の設定ファイル</a>を用意しています。 
+    <div class="sample"> 
+		<p>2-263式<br>
+		  そこしてょ つんいのりち<br>
+		  はか☆とた くう★゛きれ<br>
+		  すけになさ っる、。゜・</p>
+		<p>ぁひほふめ ぬえみやぇ「<br>
+		  ぃをらあよ まおもわゆ」<br>
+		  ぅへせゅゃ むろねーぉ </p>
+    </div>
+  </div>
+  <p>同手シフトも使う物や、両手の薬指もシフトに使うタイプもあります。(<a href="#hasei">色々な月配列</a></p>
+  <p><a href="#top">戻る</a> </p>
+</div>
+<div class="con"> 
+  <h2><a name="hikaku" id="hikaku">他方式との比較</a></h2>
+  <p>massangeanaさんのperl scriptで解析したデータで比較してみます。先にこちらを読んだ方が分かりやすいでしょう。<br>
+	　　<a href="http://www.asahi-net.or.jp/%7Eez3k-msym/charsets/laycomp.htm" class="external"> 
+	(http://www.asahi-net.or.jp/%7Eez3k-msym/charsets/laycomp.htm)</a></p>
+  <p>解析に使ったサンプルは「日本国憲法前文」です。それ以外のサンプルでの解析結果は<a href="#furoku">付録</a>に。</p>
+  <p> 
+  <div class=" pad"> 
+	<h3>指の使用頻度 </h3>
+    <table border="1">
+	  <tr> 
+		<th>方式 
+		<th>打鍵数 
+		<th>左 
+		<th>右 
+		<th>シフト 
+		<th>左人 
+		<th>左中 
+		<th>左薬 
+		<th>左小 
+		<th>右人 
+		<th>右中 
+		<th>右薬 
+		<th>右小 
+		<th>最下 
+		<th>2段め 
+		<th>3段め 
+		<th>最上 
+	  <tr> 
+		<td>ローマ字 
+		<td>1475 
+		<td>530 
+		<td>945 
+		<td>0 
+		<td>164 
+		<td>111 
+		<td>125 
+		<td>130 
+		<td>409 
+		<td>316 
+		<td>215 
+		<td>5 
+		<td>228 
+		<td>444 
+		<td>803 
+		<td>0 
+	  <tr> 
+		<td>AZIK 
+		<td>1232 
+		<td>512 
+		<td>720 
+		<td>0 
+		<td>185 
+		<td>74 
+		<td>145 
+		<td>108 
+		<td>245 
+		<td>268 
+		<td>155 
+		<td>52 
+		<td>173 
+		<td>486 
+		<td>573 
+		<td>0 
+	  <tr> 
+		<td>SKY 
+		<td>1329 
+		<td>680 
+		<td>649 
+		<td>0 
+		<td>267 
+		<td>175 
+		<td>125 
+		<td>113 
+		<td>231 
+		<td>206 
+		<td>115 
+		<td>97 
+		<td>119 
+		<td>909 
+		<td>301 
+		<td>0 
+	  <tr> 
+		<td>カナタイプ 
+		<td>922 
+		<td>486 
+		<td>436 
+		<td>115 
+		<td>208 
+		<td>151 
+		<td>86 
+		<td>41 
+		<td>142 
+		<td>75 
+		<td>74 
+		<td>145 
+		<td>219 
+		<td>254 
+		<td>314 
+		<td>135 
+	  <tr> 
+		<td>JIS X 6002 
+		<td>922 
+		<td>414 
+		<td>508 
+		<td>105 
+		<td>179 
+		<td>128 
+		<td>65 
+		<td>42 
+		<td>135 
+		<td>109 
+		<td>83 
+		<td>181 
+		<td>187 
+		<td>243 
+		<td>326 
+		<td>166 
+	  <tr> 
+		<td>JIS X 6004 
+		<td>922 
+		<td>424 
+		<td>498 
+		<td>123 
+		<td>137 
+		<td>123 
+		<td>110 
+		<td>54 
+		<td>200 
+		<td>144 
+		<td>101 
+		<td>53 
+		<td>213 
+		<td>425 
+		<td>284 
+		<td>0 
+	  <tr class="kanki"> 
+		<td> <p>月</p>
+		<td>1097 
+		<td>505 
+		<td>592 
+		<td>0 
+		<td>142 
+		<td>175 
+		<td>134 
+		<td>54 
+		<td>196 
+		<td>233 
+		<td>114 
+		<td>49 
+		<td>205 
+		<td>530 
+		<td>362 
+		<td>0 
+	  <tr> 
+		<td>TRON 
+		<td>867 
+		<td>374 
+		<td>493 
+		<td>202<br>
+		  (55) 
+		<td>121 
+		<td>131 
+		<td>84 
+		<td>38 
+		<td>194 
+		<td>123 
+		<td>89 
+		<td>87 
+		<td>179 
+		<td>387 
+		<td>301 
+		<td>0 
+	  <tr> 
+		<td>NICOLA 
+		<td>863 
+		<td>395 
+		<td>468 
+		<td>312<br>
+		  (59) 
+		<td>143 
+		<td>76 
+		<td>99 
+		<td>77 
+		<td>147 
+		<td>114 
+		<td>101 
+		<td>106 
+		<td>89 
+		<td>475 
+		<td>299 
+		<td>0 
+	  <tr> 
+		<td>中指NICOLA 
+		<td>1212 
+		<td>585 
+		<td>627 
+		<td>0 
+		<td>165 
+		<td>244 
+		<td>99 
+		<td>77 
+		<td>158 
+		<td>203 
+		<td>101 
+		<td>165 
+		<td>92 
+		<td>822 
+		<td>298 
+		<td>0 
+	  <tr> 
+		<td>花 
+		<td>1123 
+		<td>541 
+		<td>582 
+		<td>0 
+		<td>199 
+		<td>143 
+		<td>154 
+		<td>45 
+		<td>207 
+		<td>212 
+		<td>132 
+		<td>31 
+		<td>325 
+		<td>442 
+		<td>356 
+		<td>0</td></tr> 
+	</table>
+	<p>打鍵数は行段系(ローマ字系)入力に比べるとかなり少なくなっています。JISカナ(jisx6002)や新JIS(jisx6004)の、総打鍵数(打鍵数+シフト回数)と比べてもそれ程増えていません。ニコラの総打鍵数よりかなり少なくなっています。左右の小指の頻度も低めに抑えられています。</p>
+	<p>中段-&gt;上段-&gt;下段の順で打ちやすいと感じる人は多いのではないでしょうか。月は中段と上段の比率が高くなっています。同じ中指前置型配列「花」との違いのひとつです。</p>
+    <h3>2指の連続</h3>
+    <table border="1">
+	  <tr>
+		<th>方式
+		<th>打鍵数
+		<th>交互打鍵(率)
+		<th>左左
+		<th>右右
+		<th>同指異鍵
+		<th>同手跳躍
+		<th>左手縦連 
+	  <tr>
+		<td>ローマ字
+		<td>1475
+		<td>662 (44.9%)
+		<td>199
+		<td>613
+		<td>96
+		<td>220
+		<td>0 
+	  <tr>
+		<td>AZIK 
+		<td>1232
+		<td>554 (45.0%)
+		<td>235
+		<td>442
+		<td>74
+		<td>144
+		<td>0 
+	  <tr>
+		<td>SKY 
+		<td>1329
+		<td>1217 (91.6%)
+		<td>71
+		<td>40
+		<td>13
+		<td>5
+		<td>0 
+	  <tr>
+		<td>カナタイプ
+		<td>922
+		<td>508 (55.2%)
+		<td>232
+		<td>181
+		<td>106
+		<td>156
+		<td>38 
+	  <tr>
+		<td>JIS X 6002
+		<td>922
+		<td>486 (52.8%)
+		<td>171
+		<td>264
+		<td>104
+		<td>145
+		<td>24 
+	  <tr>
+		<td>JIS X 6004
+		<td>922
+		<td>609 (66.1%)
+		<td>119
+		<td>193
+		<td>46
+		<td>27
+		<td>1 
+	  <tr class="kanki"> 
+		<td>月
+		<td>1097 
+		<td>775 (70.7%) 
+		<td>117 
+		<td>204 
+		<td>49 
+		<td>22 
+		<td>0 <tr>
+		<td>TRON 
+		<td>867
+		<td>515 (59.5%)
+		<td>116
+		<td>235
+		<td>66
+		<td>44
+		<td>1 
+	  <tr>
+		<td>NICOLA 
+		<td>863
+		<td>517 (60.0%)
+		<td>136
+		<td>209
+		<td>50
+		<td>26
+		<td>1 
+	  <tr>
+		<td>中指NICOLA
+		<td>1212
+		<td>828 (68.4%)
+		<td>170
+		<td>213
+		<td>64
+		<td>17
+		<td>1 
+	  <tr>
+		<td>花 
+		<td>1123
+		<td>813 (72.5%)
+		<td>134
+		<td>175
+		<td>75
+		<td>58
+		<td>3</td></tr> 
+	</table>
+	<p>「月」はどちらかというと右手寄りの配列ですが、交互打鍵率が高いのも特徴。「羅生門」「めくらぶどうと虹」では花よりも高くなっています。</p>
+	<p>新JISの「打ちにくい運指が少ない」という特徴を受け継いでおり、同指異鍵・同手跳躍・左手縦連とも少なく抑えられています。それに比べると花は下段率が高いためか、同手跳躍が多くなっています。</p>
+  </div>
+  <p><a href="#top">戻る</a></p>
+</div>
+<div class="con"> 
+  <h2><a name="houhou">中指前置シフト新JIS配列「月」を使うには</a></h2>
+  <p>Windowsで「月配列」を利用するのに専用の(あるいは特殊な)キーボードは必要有りません。いまお使いのキーボードで利用できます。<br>
+<br>
+</p>
+  <div class=" pad">
+
+    <h3><img alt="" src="img/DvorakJ.png" width="16" height="16"><a href="http://blechmusik.xrea.jp/d/misc/Dvorak_keyboard_layout/#DvorakJ" class="external">DvorakJ</a></h3>
+	<p>その名の通り元々はDvorak用のアプリケーションですが、月配列2-263にも対応されました。その他下駄配列や叢雲配列など、さまざまな配列が使えます。</p>
+      
+	<h3><img alt="" src="img/hishi.png" width="16" height="16"><a href="http://www.asahi-net.or.jp/%7Eez3k-msym/archive/archive.htm" class="external">菱</a></h3>
+	<p><a href="http://member.nifty.ne.jp/togasi/hana_no_kuni/" class="external"> 
+	  花配列</a>用のアプリケーションですから、同じ中指前置シフト方式である「月」の実装は簡単です。<a href="#file">設定ファイル</a>を用意しています。(※09/10/14 Windows 
+Vistaでは不具合の報告もあります。)<br>
+<br>
+</p>
+
+	<h3><img alt="" src="img/mayu.gif" width="16" height="16"><a href="http://mayu.sourceforge.net/ja/index.html" class="external">窓使いの憂鬱</a></h3>
+	<p>汎用のキーカスタマイズソフト。菱に比べると少々導入までが難しいですが、菱では出来ない前置シフト+連続シフトなども可能です。機能豊富。(※09/10/14 
+「窓使いの憂鬱」の開発は終了しています。Vistaに正式に対応しているのは派生ソフト「のどか」「yamy」です)</p>
+
+    <h3><a href="http://www.fiercewinds.net/programming/SaikoroPencil/index.html" class="external">さいころえんぴつ</a></h3>
+
+    <ul type="disc">
+      <li><cite> 簡単なルールに従って動作します。決められたキー入力に対しては同じ文字が入力されます。 ただし，学習辞書を使用している場合はこの限りではありません。 
+        </cite>
+      <li><cite> IMEではなく単なるアプリとして動作します。 </cite>
+      <li><cite> 高度なキーカスタマイズが可能です。日本語入力のためではなく、単なるキーカスタマイザとしても利用可能です。 </cite></li>
+    </ul>
+	<p>「月配列」の設定ファイルも同梱されています。これに関しては説明が難しいので一度試してみてください。</p>
+    <h3>ローマ字カスタマイズ</h3>
+	<p>WXGやEGBRIDGE(Macintosh用)といった、ローマ字カスタマイズが強力なIMEであれば、「月配列」の実装も可能だと思われます。</p>
+	<p>MS-IMEやAtokでも、完全には再現できませんがすこし配列をいじって、直接設定ファイルを書けば使えます。massangeanaさんが花配列用perl
+	  scriptを公開されていますので、それを改造すれば月配列用perl scriptとして使えます。Atok2006用定義ファイルは用意しています<a href="#file">(設定ファイル)</a>。Atokの機能「スタイルコンバート」を使えばAtok2007以降からでも取り込めます。</p>
+  </div>
+  <p><a href="#top">戻る</a></p>
+</div>
+<div class="con"> 
+  <h2><a name="file">設定ファイル</a></h2>
+  <div class="pad"> 
+    <h3><img src="img/hishi.png" width="16" height="16">菱</h3>
+    <ul>
+	  <li><img alt="" src="img/hishi.png" width="16" height="16"><a href="data/tsuki/tsuki_2-263.zip">「月配列」設定ファイル
+	       2-263式</a>
+(<a href="data/tsuki/tsuki_2-263/readme.txt">readme.txt</a>)    
+	  <li><img alt="" src="img/hishi.png" width="16" height="16"><a href="data/tsuki/tsuki_2-263_dakutenprefix.zip">「月配列」設定ファイル
+	      2-263式 濁点前置シフト型        
+    </a>(<a href="data/tsuki/tsuki_2-263_dakutenprefix/readme.txt">readme.txt</a>)</li>
+      </ul>
+  </div>
+  
+    <div class="pad"> 
+    <h3>ローマ字カスタマイズ</h3>
+    <ul>
+	  <li><a href="data/tsuki/tsukiAtok.zip">Atok2006(Atok19)用ローマ字定義ファイル</a>&nbsp;(Atok2007以降からでも取り込んで使用できます。)</li>      
+    </ul>
+  </div>
+
+  <p><a href="#top">戻る</a></p>
+</div><div class="con"> 
+  <h2><a name="hasei">色々な月配列</a></h2>
+  <div class="pad"> 
+    <p>月には2-263式以外にも、左手薬指もシフトに使う4シフトのものや、同手シフトを使うものなど、様々な派生バージョンがあります。派生についてはこちらが詳しいです。</p>
+    <p><a href="http://yellow.ribbon.to/%7Eujiro/" class="external">日本語入力用キーボード配列「月配列」（Ux版）のページ</a><br></p>
+    <p>新JIS系のその他の配列も含めて</p>
+    <p><a href="jisx6004-family.html">各新JIS系配列の特徴</a></p>
+  </div>
+  <p><a href="#top">戻る</a></p>
+</div>
+
+<div class="con"> 
+  <h2><a name="furoku">付録</a></h2>
+  <!-- <p><a href="http://jisx6004key.tripod.co.jp" class="external">新JISスレの中指シフト・キーボード</a> 
+    ( <a href="http://pc3.2ch.net/test/read.cgi/pc/1030604092/886" class="external">2ch 
+    &gt;886さん作成</a> )</p> -->
+  <p><a href="data/kempo.html">キーボードによるカナ入力効率の比較 日本国憲法前文</a></p>
+  <p><a href="#top"></a><a href="data/mekura.html">キーボードによるカナ入力効率の比較 めくらぶどうと虹</a></p>
+  <p><a href="#top"></a><a href="data/rashoumon.html">キーボードによるカナ入力効率の比較 羅生門</a></p>
+  <p><a href="#top"></a><a href="data/etude.html">キーボードによるカナ入力効率の比較 緋のエチュード</a></p>
+  <p><a href="#top"></a></p>
+  <p><a href="#top">戻る</a> </p>
+</div>
+<p><a href="index.html">Home</a></p>
+<p> 
+  <!-- #BeginDate format:Ja1 -->09/10/14 <!-- #EndDate -->
+  更新<br>
+  03/05/30 より</p>
+<div style="text-align: center;"><div style="display: inline-block; position: relative; z-index: 9999;"><script type="text/javascript" charset="utf-8" src="//asumi.shinobi.jp/fire?f=434"></script></div></div></body>
+</html>

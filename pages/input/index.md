@@ -1,7 +1,5 @@
 ---
-layout: page
 title: "文字入力について"
-permalink: /page/old/input/
 ---
 
 文字入力に興味があることは説明しましたが、ここではそれについて詳しく説明します。

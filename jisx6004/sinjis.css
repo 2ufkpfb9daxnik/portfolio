@@ -1,0 +1,213 @@
+ a:link				{ color: #090;	}
+ a:visited			{ color: #363;	}
+ a:hover			{ color: #696;	}
+ a:active			{ color: #0f0;	}
+ a.external:link	{ color: #f00;	}
+ a.external:visited	{ color: #966;	}
+ a.external:hover	{ color: #633;	}
+ a.external:active	{ color: #f99;	}
+
+
+.tsubuyaki	{	font-size: x-small}
+
+.con {
+	font-size: medium;
+	border: 2px solid #444;
+	margin-right: 3%;
+	margin-left: 1em;
+	background-color: #FFFFFF;
+	margin-top: 1em;
+	margin-bottom: 5px;
+	padding: 1em;
+
+
+
+ }
+ 
+ .column {
+	border: 5px dotted #CC9;
+	margin-right: 5%;
+	margin-left: 5%;
+	padding-left: 1em;
+	padding-right: 1em;
+	margin-bottom: 1em;
+
+
+	}
+
+.pad {
+	font-size: medium;
+	margin-right: 3%;
+	margin-left: 3%;
+	padding-left: 1em;
+	padding-right: 1em;
+	background-color: #FFFFFF;
+	}
+
+.pad2 {
+	font-size: small;
+	margin: 3%;
+	padding: 2%;
+	border: thin dashed;
+	background-color: #FFFFFF;
+	}
+
+.pad3 {
+	font-size: small;
+	margin-right: 10%;
+	margin-left: 10%;
+	padding-left: 1em;
+	padding-right: 1em;
+}
+
+body.mayu {
+		background-color: #FFEEEE;
+}
+
+body.sinjis {
+		background-color: #EEEEFF;
+}
+
+body.tsuki {
+		background-color: #EEFFEE;
+}
+
+body.sonota {
+		background-color: #FFFFEE;
+}
+
+body.index {
+		background-color: #EEEEEE;
+}
+
+body.link {
+		background-color: #FFEEFF;
+}
+
+body.tsubuyaki {
+		background-color: #FFFFFF;
+}
+
+h1 {
+	font-size: 150%;
+	font-weight: bold;
+	padding: 1% 1% 1% 3%;
+	margin: 3% auto 7%;
+	border: 0px none;
+
+
+
+
+
+
+	}
+
+h2 {
+	font-size: 120%;
+	margin-right: 2%;
+	margin-left: 2%;
+	padding: 3px;
+	border-top-width: 1px;
+	border-right-width: 5px;
+	border-bottom-width: 1px;
+	border-left-width: 5px;
+	border-top-style: double;
+	border-right-style: double;
+	border-bottom-style: double;
+	border-left-style: double;
+	border-top-color: #333;
+	border-right-color: #F33;
+	border-bottom-color: #333;
+	border-left-color: #f33;
+
+
+
+	}
+
+h3 {
+	font-size: medium;
+	border-left: 3px solid #09C;
+	border-bottom: 1px solid #333;
+	margin-left: 3%;
+	padding-left: 3px;
+
+
+	}
+
+
+h4 {
+	font-size: small;
+	border-bottom: 1px #222 solid
+	}
+q {
+	font-style: italic;
+}
+
+.comment {
+	margin-right: 5%;
+	margin-left: 5%;
+	padding-left:2pt;
+	border-left: 3px double #000000;
+	border-top: 1px solid #000000;
+	border-right-width: 1px;
+	border-bottom-width: 1px;
+	border-right-color: #000000;
+	border-bottom-color: #000000;
+	border-right-style: solid;
+	border-bottom-style: solid;
+	margin-bottom: 1em;
+
+
+}
+
+.sample {
+	color:#a00;
+	padding-left:4pt;
+	padding-right:4pt;
+	margin-left:8pt;
+	margin-right: 8px;
+	font-size: small;
+	font-family: "ＭＳ ゴシック", "Osaka－等幅";
+	border: solid 1pt #a00;
+	text-indent: 0em;
+
+}
+
+.banner {
+	text-align: center;
+}
+.warning {
+	font-weight: 500;
+	color: #990000;
+	background-color: #FFFFFF;
+	text-align: center;
+}
+img {
+	border: none;
+}
+.chushaku {
+	color: #006600;
+}
+.kanki {
+	color: #FF0000;
+}
+
+.menu {
+	border: 1px dashed #FF6600;
+	margin-right: 5%;
+	margin-left: 5%;
+	padding-left: 1em;
+	padding-right: 1em;
+	text-indent: 1em;
+	margin-bottom: 1em;
+	font-size: medium;
+	padding-top: 3px;
+	padding-bottom: 3px;
+
+	}
+.migi {
+	text-align: right;
+}
+.hishi {
+	background-color: #FFAAAA;
+}

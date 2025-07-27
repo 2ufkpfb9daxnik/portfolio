@@ -1,5 +1,5 @@
 body.theme-tsuki {
-  background: #EEFFEE;
+  background: #ffffee;
   margin: 0;
   color: #222;
 }
@@ -10,7 +10,7 @@ body.theme-dark {
   color: #ffffff;
 }
 
-body.theme-dark .container {
+body.theme-dark .container-section {
   background: #1a1a1a;
   border-color: #333;
   color: #ffffff;
@@ -29,20 +29,6 @@ body.theme-dark a {
   color: #90ff90;
 }
 
-body.theme-dark .mobile-links-container {
-  background: #1a1a1a;
-  border-color: #333;
-  color: #ffffff;
-}
-
-body.theme-dark .mobile-links li {
-  border-bottom-color: #333;
-}
-
-body.theme-dark .mobile-links a {
-  color: #90ff90;
-}
-
 body.theme-dark a:visited {
   color: #c9a9ff;
 }
@@ -56,15 +42,32 @@ body.theme-dark a:visited {
   display: none;
 }
 
-.container {
-  background: #fff;
-  border: 2px solid #444;
+.main-content {
   margin: 2em auto;
-  padding: 2em;
   max-width: 700px;
   min-width: 0;
   box-sizing: border-box;
   position: relative;
+}
+
+/* 個別のセクションコンテナ */
+.container-section {
+  background: #fff;
+  border: 2px solid #444;
+  margin-bottom: 1.5em;
+  padding: 2em;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 最初のセクションの上マージンを調整 */
+.container-section:first-child {
+  margin-top: 0;
+}
+
+/* 最後のセクションの下マージンを調整 */
+.container-section:last-child {
+  margin-bottom: 0;
 }
 
 .home-top, .home-bottom {
@@ -134,7 +137,7 @@ body.theme-dark .theme-toggle:hover {
     z-index: 10;
   }
   
-  .container {
+  .main-content {
     position: relative;
     margin: 2em auto;
     margin-left: calc(20vw + 2em);
@@ -142,13 +145,13 @@ body.theme-dark .theme-toggle:hover {
     margin-right: auto;
     width: calc(100vw - clamp(calc(200px + 2em + 2em), calc(20vw + 2em), calc(280px + 2em + 2em)) - 2em);
     max-width: 800px;
-    padding: 2em;
+    padding: 0;
   }
 }
 
 /* 大画面では本文を中央寄せ */
 @media (min-width: 1400px) {
-  .container {
+  .main-content {
     margin-left: max(calc(20vw + 2em), calc(50vw - 400px));
     margin-left: max(clamp(calc(200px + 2em + 2em), calc(20vw + 2em), calc(280px + 2em + 2em)), calc(50vw - 400px));
     width: auto;
@@ -156,25 +159,27 @@ body.theme-dark .theme-toggle:hover {
   }
 }
 
-/* スマホ用記事リンク表示 */
-.mobile-links-container {
-  display: none;
-}
-
 /* タブレット・スマホ画面用 */
 @media (max-width: 799px) {
   .sidebar {
     display: none;
   }
-  .container {
+  .main-content {
     position: static;
     margin: 1em;
-    padding: 1em;
+    padding: 0;
     max-width: none;
     width: auto;
   }
+  
+  .container-section {
+    padding: 1em;
+  }
+  
   .home-top, .home-bottom {
     display: block;
+    margin: 1em 0;
+    padding: 0 1em;
   }
   
   .home-top {
@@ -185,51 +190,5 @@ body.theme-dark .theme-toggle:hover {
   
   .mobile-only {
     display: inline-block;
-  }
-  
-  /* スマホ用記事リンクを表示 */
-  .mobile-links-container {
-    display: block;
-    background: #fff;
-    border: 2px solid #444;
-    margin: 1em;
-    padding: 1em;
-    box-sizing: border-box;
-  }
-  
-  .mobile-links-container h2 {
-    margin-top: 0;
-    margin-bottom: 1em;
-    font-size: 1.2em;
-  }
-  
-  .mobile-links {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  
-  .mobile-links li {
-    margin-bottom: 0.8em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 0.8em;
-  }
-  
-  .mobile-links li:last-child {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-  
-  .mobile-links a {
-    text-decoration: none;
-    color: #090;
-    font-size: 1em;
-    display: block;
-    padding: 0.3em 0;
-  }
-  
-  .mobile-links a:hover {
-    text-decoration: underline;
   }
 }

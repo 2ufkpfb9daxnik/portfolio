@@ -1,7 +1,5 @@
 ---
-layout: page
 title: "迷路くずし"
-permalink: /page/old/BreakingTheMaze/
 ---
 
 [githubリポジトリ](https://github.com/2ufkpfb9daxnik/BreakingTheMaze)
@@ -9,4 +7,7 @@ BreakingTheMaze.exeを何らかの方法で実行すると開始します。は�
 起動するとコンソール画面が開くと思いますがこれはpyinstallerでnoconsoleオプションを付けてもウィルス対策ソフトに引っかかるからで、その対処も面倒くさいのでやらなかったためです。多分消しても遊べます。
 [(参考までに)](https://gamingpc.one/dev/python-pyinstaller/)
 2024年1月に作成しました。
+![BreakingTheMaze_start.png](./BreakingTheMaze_start.png)
+![BreakingTheMaze_middle.png](./BreakingTheMaze_middle.png)
+![BreakingTheMaze_finish.png](./BreakingTheMaze_finish.png)
 <!-- <p>ボンバーマンとかパックマンから着想を得ました。本当は似たような感じの生け垣ファイヤーというのを作ろうとしていましたが(壁が緑色なのはその名残)、時間がなかったのと、あとタイムを追求する遊びが(迷路はどうしてもゴールから遡れば一発でわかって面白くないという点から焦点をずらしているので)意外と面白かったのでこういうふうになりました。やり直し機能をつけてグラフィックがなんとかなって自動で生成できるようになってタイムランキングをつけてやれば結構真面目に遊べると思います。壁を崩す方法のバリエーションがあってもおもしろそうです。やりませんけど。</p> -->

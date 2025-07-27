@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鷽</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc">
+        <ul>
+        <li><a href="#鷽-ウソと読む" id="toc-鷽-ウソと読む">鷽
+        (ウソと読む)</a>
+        <ul>
+        <li><a href="#簡単な紹介"
+        id="toc-簡単な紹介">簡単な紹介</a></li>
+        <li><a href="#開発動機感想など"
+        id="toc-開発動機感想など">開発動機・感想など</a></li>
+        </ul></li>
+        </ul>
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+      <div id="content-wrapper"><p>作成: 2025-05-19 21:46</p>
+<h2 id="鷽-ウソと読む">鷽 (ウソと読む)</h2>
+<h3 id="簡単な紹介">簡単な紹介</h3>
+<p><a href="https://pyrrhula.vercel.app">ここからアクセス</a></p>
+<p><a
+href="https://github.com/2ufkpfb9daxnik/pyrrhula">githubリポジトリ</a></p>
+<p>レーティングのあるSNSです。投稿頻度などによって色がつきます。</p>
+<figure>
+<img src="./rating.png" alt="レーティング" />
+<figcaption aria-hidden="true">レーティング</figcaption>
+</figure>
+<p>タイムラインはこんな感じです。</p>
+<figure>
+<img src="./timeline.png" alt="タイムライン" />
+<figcaption aria-hidden="true">タイムライン</figcaption>
+</figure>
+<p>結構自由に絞れる検索機能があります。</p>
+<figure>
+<img src="./search.png" alt="検索機能" />
+<figcaption aria-hidden="true">検索機能</figcaption>
+</figure>
+<p>ダイレクトメッセージがあります。</p>
+<figure>
+<img src="./chat.png" alt="DM" />
+<figcaption aria-hidden="true">DM</figcaption>
+</figure>
+<p>フォロー関係グラフがあります。なんかvercelで動きません。</p>
+<figure>
+<img src="./followgraph.png" alt="フォロー関係グラフ" />
+<figcaption aria-hidden="true">フォロー関係グラフ</figcaption>
+</figure>
+<h3 id="開発動機感想など">開発動機・感想など</h3>
+<p>もう根本的な発想というのは忘れてしまったのですが、2024年の10月(あるいはもっと前のシラバスを見た)の段階で、これを課題として提出した授業の最終課題が何か作るということを知ったので、当時はAtCoderを始めたこともあってプログラミング問題のオンラインジャッジシステムを作れたら面白そうだなと思っていました。<a
+href="https://info.atcoder.jp/more/practice/stronger">更に、AtCoderユーザーにはX/Twitterに公式が登録推奨するくらいの大きさのコミュニティが存在し、</a>これが一緒になってたらいいのにという気分でいました。(レーティングシステムは完全にここから発想を得ています。色があるとTwitchのコメント欄みたいで良い感じになりそうだし。いわゆるツイ廃と呼ばれるような人の承認欲求とか、そういうのよりはあまり投稿しないタイプの人がなるべく投稿するモチベーション的なあればほしいなというのもありました。あとユーザー一覧画面も、レート順に並べ替えられることから察せるかと思いますがこれの影響です。)実際CodeForcesはBlogとかあってそういう感じなんじゃないですかね。あれはRedditとか掲示板に近いのかな。解説とかで長文になったり数式が使えたたりで、そういう形式のほうがいいのかも知れないけど、どちらもあまり詳しくありません。どっちかといえば本気でその競技プログラミングのことだけではなく、競技プログラミングをしている人が普通に日常の投稿とかをするのも好きなので、掲示板的な感じよりは気軽に書き込めるX/Twitter的な感じを目指しました(本当は長文/短文みたいに分けるつもりでした。長文はそのリンクだけがタイムラインに表示される想定)。あと、競技プログラミングが結構面白いというのもそうなんですが、コンテスト中の順位表が、2万人くらいのユーザーを2冪のページネーションで見れるようになっていたのが結構印象的で、どっちかといえばジャッジシステムは本分じゃなくて大量のアカウントを並べて表示するようなものを作りたいなと思っていました(ジャッジシステムはGCC/ClangなどコンパイラやPythonインタプリタとかをどうやってvercelに載っけて動かすとかがわからんし、プログラムを実行させるというのはそのままバカデカセキュリティリスクになるという話もあり、難しそうだったので断念。今思うにはwandboxとかpaizaのAPIを叩けばよかったような気もするけど、それは課題としてどう(そこを実装するよう要求するような課題だと思う)なんだという思いがあった)。コンピューターが大量の物量を処理しているというのがわかる絵面が好きだったので(例えばターミナルで大量に処理が行われているときとか)、できればリアルタイムなタイムラインの更新もしてみたいのですが、ポーリングだとその頻度によってだいぶ枠を食いそうで、そうじゃない方法は調べても私に理解力が無くてできませんでした。</p>
+<p>フォローグラフはよくTwitterでAPIが開放されていた時代にそういう近しい関係性のアカウントを並べるみたいなやつがあったなと思って、これを競技プログラミングで新しく学んだ有向グラフに落とし込めたら直感的で面白いしフォローする人を増やすいいきっかけになるかなと思って導入した<del>かったのですが何故かvercelで動きません。ローカル実行では動くので何か原因があるんだろうと思いますがわかりませんでした。教えて下さい。</del>
+(2025/03/04)動きました</p>
+<p>X/Twitterでは自分の作ったフォロー中の人の投稿を時系列順に並べてくれたら良かったのにおすすめタイムラインが推されてきて鬱陶しいので、(その前からも興味があってやっていましたが)mastodonやblueskyなどを試していたのですが、ここでは始めたての頃誰をフォローすればいいのかわからない、フォローしたくなるような人を探すのが一苦労だったので(思い出してみれば自分がX/Twitterを始めたころもそうだった気がします)、フォローグラフや全体タイムラインなど、そういう人を探す機能に関しておすすめアルゴリズムに頼らない方法をなるべく充実させたつもりです。やっぱりmastodonとかmiskkeyの全体タイムラインで投稿を見るのが一番いいと思ったので、そこまで規模が大きくなることもないだろうからゆったり見つけられるかなと思って導入しました。</p>
+<p>初期はblueskyなどでしか発表してないはずなのでそこの方々が登録してくださってるんだと思います。ありがとうございます。1度最初期にデータベースをふっとばしてしまったことがあって、その時はやらかしたーと思ったのですが、根気よくまた作ってくださって本当にありがとうございます。作ってよかった点はsupabaseで先に追加テーブルとかカラムを作ってからprisma
+db pullで落とすと壊しにくいというのがわかったことです。</p>
+<p>アカウント/投稿の削除は意図的にできないようにしています。これはそういうのを(その人が隠したかったとしても、なんなら隠したいなら余計に)見たい！と思うときに結構あったからです。引用拡散ができないのはこれも意図的ですが鬱陶しいからです。基本的にされるようなアカウントの運用をしたこと無いですが、だからこそされたら結構怖いし、だるいし、いろいろ紛争の争点になってる気がしたので、拡散のあとの言及でお互いに影響を及ぼさないようにしたかったです。あとお気に入りは公開されます。mastodonはお気に入りもあるのにブックマークもあって意味不明でしたが、これを統合(昔のTwitterの形式)しました。チャットはmastodonやmisskeyのように公開範囲を制限した投稿として作ろうかなと思っていましたが、いちいちそれを指定するのがめんどくさいなとも思っていたので普通のチャット形式にしました。これ書いてるときに思いましたが、リスト(に入れられているユーザーの投稿だけを見る)機能とかはあってもいいかも知れませんね。もし作るなら絶対公開にします。リスト内限定の投稿とかは好きじゃないですが、でも全部混ざってたらだるい気もするので、そういうのを考えるのがめんどくさいですね。リンクカードはめんどくさいので実装していません。画像関連は良くないやつを投稿されても困るので、supabaseのストレージ機能は授業で教えてもらっていましたが使わずリンクを指定する形式にしました。いっそアイコンとかはなしにしてもいいかなと思っていたんですがやっぱりアカウントをアイコンでしか判別してない自分に気づいたので、必要だと思ってあります。</p>
+<p>パスワードに日本語その他いろんな文字を使える様になっているのはそうなっていてほしいと昔から思っていたからです。普通に考えて何文字以上にしろ、何種類以上の文字を使えと鬱陶しいことを言ってくる割にその文字種はラテン文字数字記号に限定しますとか馬鹿じゃねえのとずっと思っていたので。</p>
+<p>作成時はgithub copilotのclaude3.5
+sonnetをずっと使っていました。ほぼすべてのコードで使っています。</p>
+<p>最終更新: 2025-07-28 02:53</p></div>
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <script>
+    // ダークモード機能
+    function toggleTheme() {
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        body.classList.remove('theme-dark');
+        body.classList.add('theme-tsuki');
+      } else {
+        body.classList.remove('theme-tsuki');
+        body.classList.add('theme-dark');
+      }
+      
+      // 設定を保存
+      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+      document.cookie = `theme=; path=/; max-age=31536000`; // 1年間保存
+    }
+    
+    // ページ読み込み時にテーマを復元
+    function loadTheme() {
+      const cookies = document.cookie.split(';');
+      let theme = 'tsuki'; // デフォルト
+      
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'theme') {
+          theme = value;
+          break;
+        }
+      }
+      
+      const body = document.body;
+      body.classList.remove('theme-tsuki', 'theme-dark');
+      body.classList.add(`theme-`);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // テーマを先に読み込み
+      loadTheme();
+      
+      const contentWrapper = document.getElementById('content-wrapper');
+      const content = contentWrapper.innerHTML;
+      
+      // h2とh3で分割するための正規表現
+      const sectionRegex = /(<h[23][^>]*>.*?<\/h[23]>)/gi;
+      
+      // コンテンツをh2/h3で分割
+      const parts = content.split(sectionRegex);
+      let newHTML = '';
+      let currentSection = '';
+      let inSection = false;
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // h2またはh3の見出しかチェック
+        if (part.match(/^<h[23]/i)) {
+          // 前のセクションを閉じる
+          if (inSection && currentSection.trim()) {
+            newHTML += '<div class="container-section">' + currentSection + '</div>';
+          }
+          // 新しいセクションを開始
+          currentSection = part;
+          inSection = true;
+        } else if (part.trim()) {
+          // 通常のコンテンツ
+          if (inSection) {
+            currentSection += part;
+          } else {
+            // 最初のセクション（見出しなし）
+            if (!newHTML && part.trim()) {
+              newHTML += '<div class="container-section">' + part + '</div>';
+            }
+          }
+        }
+      }
+      
+      // 最後のセクションを閉じる
+      if (inSection && currentSection.trim()) {
+        newHTML += '<div class="container-section">' + currentSection + '</div>';
+      }
+      
+      // 結果が空の場合は元のコンテンツを1つのセクションとして表示
+      if (!newHTML.trim()) {
+        newHTML = '<div class="container-section">' + content + '</div>';
+      }
+      
+      contentWrapper.innerHTML = newHTML;
+    });
+  </script>
+</body>
+</html>

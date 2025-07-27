@@ -1,7 +1,5 @@
 ---
-layout: page
 title: "鷽"
-permalink: "page/pyrrhula"
 ---
 
 ## 鷽 (ウソと読む)
@@ -14,23 +12,23 @@ permalink: "page/pyrrhula"
 
 レーティングのあるSNSです。投稿頻度などによって色がつきます。
 
-![レーティング](/portfolio/images/pyrrhula/rating.png)
+![レーティング](./rating.png)
 
 タイムラインはこんな感じです。
 
-![タイムライン](/portfolio/images/pyrrhula/timeline.png)
+![タイムライン](./timeline.png)
 
 結構自由に絞れる検索機能があります。
 
-![検索機能](/portfolio/images/pyrrhula/search.png)
+![検索機能](./search.png)
 
 ダイレクトメッセージがあります。
 
-![DM](/portfolio/images/pyrrhula/chat.png)
+![DM](./chat.png)
 
 フォロー関係グラフがあります。なんかvercelで動きません。
 
-![フォロー関係グラフ](/portfolio/images/pyrrhula/followgraph.png)
+![フォロー関係グラフ](./followgraph.png)
 
 ### 開発動機・感想など
 

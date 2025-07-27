@@ -1,7 +1,5 @@
 ---
-layout: page
 title: "崩壊：スターレイル簡易和英辞書"
-permalink: /page/old/hsrtemporarydictionaryje/
 ---
 
 2024年2月に12時間位で制作した崩壊：スターレイルというゲームの簡易的な和英辞書です。[ここからアクセスできるgithubリポジトリ](https://github.com/2ufkpfb9daxnik/hsrtemporarydictionaryej)のdistファイル内にあるmain.exeを実行すれば動くはずです。ライセンスはLGPL3.0です。
@@ -28,6 +26,6 @@ permalink: /page/old/hsrtemporarydictionaryje/
 
 実際に実行して見ることができるシーンのスクリーンショットを3枚添付します。
 
-![スクリーンショット1](/portfolio/images/2024-02-26_02h39_51.png)
-![スクリーンショット2](/portfolio/images/2024-02-26_02h40_00.png)
-![スクリーンショット3](/portfolio/images/2024-02-26_02h40_22.png)
+![スクリーンショット1](./2024-02-26_02h39_51.png)
+![スクリーンショット2](./2024-02-26_02h40_00.png)
+![スクリーンショット3](./2024-02-26_02h40_22.png)
