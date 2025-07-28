@@ -68,7 +68,7 @@
         this.ctx = canvas.getContext('2d');
         this.currentAnimation = null;
         this.time = 0;
-        this.switchInterval = 5000 + Math.random() * 5000; // 5-10秒
+        this.switchInterval = 500 + Math.random() * 500; // 0.5-1秒
         this.lastSwitchTime = 0;
         
         this.animations = [
@@ -120,7 +120,7 @@
         }
         
         this.currentAnimation = animationType;
-        this.switchInterval = 5000 + Math.random() * 5000;
+        this.switchInterval = 500 + Math.random() * 500;
         this.lastSwitchTime = this.time;
       }
       
@@ -195,13 +195,17 @@
       }
       
       // スパイラル
-      initSpirals() {
+        initSpirals() {
         this.spiralTime = 0;
-        this.spiralCenters = [
-          { x: this.canvas.width * 0.3, y: this.canvas.height * 0.3 },
-          { x: this.canvas.width * 0.7, y: this.canvas.height * 0.7 }
-        ];
-      }
+        const spiralCount = Math.floor(Math.random() * 5) + 1; // 1〜5個
+        this.spiralCenters = [];
+        for (let i = 0; i < spiralCount; i++) {
+            this.spiralCenters.push({
+            x: Math.random() * this.canvas.width,
+            y: Math.random() * this.canvas.height
+            });
+        }
+        }
       
       update() {
         this.time += 16; // 約60fps
@@ -248,7 +252,7 @@
       
       updateRipples() {
         this.rippleSpawnTimer++;
-        if (this.rippleSpawnTimer > 60) {
+        if (this.rippleSpawnTimer > 6) {
           this.ripples.push({
             x: Math.random() * this.canvas.width,
             y: Math.random() * this.canvas.height,
@@ -259,7 +263,7 @@
         }
         
         this.ripples = this.ripples.filter(ripple => {
-          ripple.radius += 6;
+          ripple.radius += 10;
           ripple.alpha -= 0.008;
           return ripple.alpha > 0 && ripple.radius < 400;
         });
