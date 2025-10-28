@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>$title$</title>
+  <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc">
+        $toc$
+      </div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+      <div id="content-wrapper">
+<nav class='toc'><ul>
+<li class='toc-l2'><a href='#'>インターンシップ</a></li>
+<li class='toc-l2'><a href='#'>内容</a></li>
+<li class='toc-l3'><a href='#'>事前課題</a></li>
+<li class='toc-l3'><a href='#'>実習</a></li>
+<li class='toc-l3'><a href='#'>感想</a></li>
+</ul></nav>
+<p>作成: 2025-10-27 08:57</p>
+<h2 id=''>インターンシップ</h2>
+<p><a href="https://www.jaist.ac.jp/is/labs/toc/">北陸先端科学技術大学院大学 計算理論研究室にインターンに行きました。</a></p>
+<h2 id=''>内容</h2>
+<h3 id=''>事前課題</h3>
+<p>Haskellの種々の構文や概念、各種アルゴリズムやデータ構造の実装方法を学びました。</p>
+<p>具体的には、</p>
+<ul>
+<li>関数に付く型</li>
+<li>再帰関数</li>
+<li>パターンマッチ</li>
+<li>リストの定義</li>
+<li>リストの結合</li>
+<li>リストを含む関数</li>
+<li>挿入ソート、クイックソート、マージソート</li>
+<li>ラムダ関数</li>
+<li>高階関数</li>
+<li>Map</li>
+<li>Filter</li>
+<li>Partition</li>
+<li>畳み込み(左右)</li>
+<li>リスト内包表記</li>
+<li>代数的データ型</li>
+<li>二分探索木</li>
+<li>型クラス</li>
+<li>型エイリアス</li>
+<li>I/O</li>
+<li>do記法</li>
+<li>Zip</li>
+<li>順列</li>
+<li>N-queen problem</li>
+</ul>
+<p>というような内容です。</p>
+<h3 id=''>実習</h3>
+<p>インターン1日目は、再帰を含む関数の性質の証明方法を習い、演習問題を解きました。英語で証明を書くのは初めてだったのですが、私程度でもなんとかなりました。</p>
+<p>インターン2日目は、文脈、置換等といった項書換え系の概念を学び、演習問題を解きました。<a href="https://www.jaist.ac.jp/is/labs/toc/rewriting.html">その後はこの記事に沿って実際に項書換え系のインタプリタを実装しはじめました。</a>このときはreplace、positions、subtermAtなどといった関数を実装しました。</p>
+<p>インターン3日目は、インタプリタの実装の続きを行いました。具体的には、パターンマッチングを行うための関数matchとその補助関数、代入のための関数substituteを実装しました。そして前日に作っていた関数と合わせた単一ステップの項書換えを行うrewrite、正規系まで項書換えを行うnf関数を実装しました。</p>
+<p>インターン4日目は、項書換え系のファイル(.trs形式)を読み込み、定数mainの正規系を出力するプログラムを実装しました。そしてクイックソートを表したプログラム(qsort.trs)の実行に完了しました。その後はマージソート、挿入ソートを表したプログラムを実装しました。更に.trs形式ではなくて.fp形式で書き表されたファイルを読むパーサーが与えられたので、.fp形式で各種ソートを移植したほか、list関数を実装しました。</p>
+<p>インターン5日目は、プログラム高速化のために、書き換え戦略を見直して、これまでsmall-step semanticsと呼ばれていたものを実装していましたが、big-stem semanticsと呼ばれているものに変更したものを実装しました。これでどれくらい早くなったかを確認するためにfibonacci数列のn項目を計算する関数なども書きました。</p>
+<h3 id=''>感想</h3>
+<p>やっぱり言語処理系というと大量のコードを書くことになるだろうということでプログラムを書く能力の低さが露呈するのではないかと危惧していましたが(更にOCamlを挫折したくらいしか関数型言語をやったことがなかった)、案外私が書いた行はコメントなどを除くと100行程度で評価器になっていて驚きました。まあパーサーの部分を書かずに配布されたやつを使うという感じだったので、そこを書くとなるともうちょっと書くことになりはしそうでしたが、その部分はそれぞれの制御文字列に対して似たような処理を何回も書く感じだったのでそこまで本質ではないのかもしれないと思いました。いや実際書くと難しいのかもしれませんが。構文解析って結構面白そうなアルゴリズムがあるっぽいので、そのうちちゃんと学びたいですね。</p>
+<p>石川県らしくEIZOの4kモニターが与えられて大変作業しやすかったです。キーボードも持っていけばよかったなあ。</p>
+<p>廣川教授には大変丁寧な指導を頂きました。ありがとうございました。</p>
+<p>また学生募集係の中西様にも大変お世話になりました。ありがとうございました。</p>
+<p>最終更新: 2025-10-27 10:04</p>
+</div>
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <script>
+    // ダークモード機能
+    function toggleTheme() {
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+      
+      if (isDark) {
+        body.classList.remove('theme-dark');
+        body.classList.add('theme-tsuki');
+      } else {
+        body.classList.remove('theme-tsuki');
+        body.classList.add('theme-dark');
+      }
+      
+      // 設定を保存
+      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+      document.cookie = `theme=${currentTheme}; path=/; max-age=31536000`; // 1年間保存
+    }
+    
+    // ページ読み込み時にテーマを復元
+    function loadTheme() {
+      const cookies = document.cookie.split(';');
+      let theme = 'tsuki'; // デフォルト
+      
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'theme') {
+          theme = value;
+          break;
+        }
+      }
+      
+      const body = document.body;
+      body.classList.remove('theme-tsuki', 'theme-dark');
+      body.classList.add(`theme-${theme}`);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // テーマを先に読み込み
+      loadTheme();
+      
+      const contentWrapper = document.getElementById('content-wrapper');
+      const content = contentWrapper.innerHTML;
+      
+      // h2とh3で分割するための正規表現
+      const sectionRegex = /(<h[23][^>]*>.*?<\/h[23]>)/gi;
+      
+      // コンテンツをh2/h3で分割
+      const parts = content.split(sectionRegex);
+      let newHTML = '';
+      let currentSection = '';
+      let inSection = false;
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        
+        // h2またはh3の見出しかチェック
+        if (part.match(/^<h[23]/i)) {
+          // 前のセクションを閉じる
+          if (inSection && currentSection.trim()) {
+            newHTML += '<div class="container-section">' + currentSection + '</div>';
+          }
+          // 新しいセクションを開始
+          currentSection = part;
+          inSection = true;
+        } else if (part.trim()) {
+          // 通常のコンテンツ
+          if (inSection) {
+            currentSection += part;
+          } else {
+            // 最初のセクション（見出しなし）
+            if (!newHTML && part.trim()) {
+              newHTML += '<div class="container-section">' + part + '</div>';
+            }
+          }
+        }
+      }
+      
+      // 最後のセクションを閉じる
+      if (inSection && currentSection.trim()) {
+        newHTML += '<div class="container-section">' + currentSection + '</div>';
+      }
+      
+      // 結果が空の場合は元のコンテンツを1つのセクションとして表示
+      if (!newHTML.trim()) {
+        newHTML = '<div class="container-section">' + content + '</div>';
+      }
+      
+      contentWrapper.innerHTML = newHTML;
+    });
+  </script>
+</body>
+</html>
+
