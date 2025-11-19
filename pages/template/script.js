@@ -14,7 +14,7 @@
       rotSpeedMax: 3,
       vxRange: [-100, 100],
       vyRange: [-100, 100],
-      scaleVelRange: [0.06, 1],
+      scaleVelRange: [0.06, 2],
       sizeRange: [28, 120],
       targetScale: 10,
       maxShapes: 220
@@ -34,6 +34,24 @@
       flickerHzRange: [0.4, 1.2],
       // キャンバス最大保持点数（安全装置）
       maxDots: 600
+    },
+
+    // --- 円枠（Ring）アニメ固有設定（新規追加） ---
+    circle: {
+      // 1トリガーで発生させる円の個数
+      spawnCountRange: [12, 20],
+      // 初期半径(px)
+      initialRadiusRange: [6, 24],
+      // 成長速度(px/s)
+      growthRange: [10, 500],
+      // 線幅(px)
+      lineWidthRange: [1, 4],
+      // 寿命(ms) — 寿命経過で消える
+      lifeRange: [800, 4400],
+      // 初期アルファ
+      alphaRange: [0.18, 0.6],
+      // キャンバス最大保持数
+      maxRings: 240
     },
 
     // --- スケジューラ設定（複数アニメからランダムに選んでトリガー） ---
@@ -501,6 +519,126 @@
     }
   }
 
+  // === 円枠（Ring）アニメクラス（新規追加） ===
+  class CircleOutlineManager {
+    constructor() {
+      // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.circle を編集してください） ---
+      this.cfg = ANIM_CONFIG.circle;
+      this.speedMul = ANIM_CONFIG.speedMultiplier;
+
+      const old = document.getElementById('ring-canvas');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+
+      this.canvas = document.createElement('canvas');
+      this.canvas.id = 'ring-canvas';
+      Object.assign(this.canvas.style, {
+        position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+        zIndex: '-1', pointerEvents: 'none'
+      });
+      document.body.appendChild(this.canvas);
+
+      this.ctx = this.canvas.getContext('2d', { alpha: true });
+      this.dpr = window.devicePixelRatio || 1;
+      this.rings = [];
+      this.time = performance.now();
+
+      // 初期は非アクティブ（スケジューラが切り替える）
+      this.active = false;
+
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+      this.loop();
+    }
+
+    onThemeChange() {
+      // ベースカラー優先なので特別処理不要
+    }
+
+    resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
+      this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
+      this.canvas.style.width = w + 'px';
+      this.canvas.style.height = h + 'px';
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.w = w; this.h = h;
+    }
+
+    // トリガで複数の円を生成（円は寿命で消える）
+    triggerBurst() {
+      this.activate();
+      const count = randInt(this.cfg.spawnCountRange[0], this.cfg.spawnCountRange[1]);
+      for (let i = 0; i < count; i++) {
+        if (this.rings.length >= this.cfg.maxRings) break;
+        const r0 = rand(this.cfg.initialRadiusRange[0], this.cfg.initialRadiusRange[1]);
+        const x = rand(0, this.w);
+        const y = rand(0, this.h);
+        const growth = rand(this.cfg.growthRange[0], this.cfg.growthRange[1]) * this.speedMul; // px/s
+        const lineWidth = rand(this.cfg.lineWidthRange[0], this.cfg.lineWidthRange[1]);
+        const life = randInt(this.cfg.lifeRange[0], this.cfg.lifeRange[1]);
+        const alpha = rand(this.cfg.alphaRange[0], this.cfg.alphaRange[1]);
+        const ring = {
+          x, y, r: r0, growth, lineWidth, life, created: performance.now(), alphaStart: alpha
+        };
+        this.rings.push(ring);
+      }
+    }
+
+    // アクティブ化 / 非アクティブ化
+    activate() { this.active = true; }
+    deactivate() {
+      this.active = false;
+      this.rings.length = 0;
+      if (this.ctx) this.ctx.clearRect(0, 0, this.w || 0, this.h || 0);
+    }
+
+    update(dt) {
+      if (!this.active) return;
+      const now = performance.now();
+      for (let i = this.rings.length - 1; i >= 0; i--) {
+        const R = this.rings[i];
+        R.r += R.growth * dt; // dt は秒単位で来る（loop で調整）
+        const age = now - R.created;
+        const t = clamp(age / R.life, 0, 1);
+        // フェードアウト
+        R.alpha = R.alphaStart * (1 - t);
+        if (age >= R.life) {
+          this.rings.splice(i, 1);
+        }
+      }
+    }
+
+    draw() {
+      if (!this.active) return;
+      this.ctx.clearRect(0, 0, this.w, this.h);
+      for (const R of this.rings) {
+        this.ctx.save();
+        this.ctx.globalAlpha = clamp(R.alpha, 0, 1);
+        this.ctx.lineWidth = Math.max(0.5, R.lineWidth);
+        this.ctx.strokeStyle = baseColorAlpha(1.0, -6);
+        this.ctx.beginPath();
+        this.ctx.arc(R.x, R.y, Math.max(0.5, R.r), 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
+    }
+
+    loop() {
+      const now = performance.now();
+      const dt = (now - this.time) * 0.001; // 秒
+      this.time = now;
+      this.update(dt);
+      this.draw();
+      this.raf = requestAnimationFrame(() => this.loop());
+    }
+
+    destroy() {
+      if (this.raf) cancelAnimationFrame(this.raf);
+      const c = document.getElementById('ring-canvas');
+      if (c && c.parentNode) c.parentNode.removeChild(c);
+    }
+  }
+
   // === アニメレイヤ登録とスケジューラ ===
   class AnimationScheduler {
     constructor() {
@@ -523,8 +661,8 @@
         if (typeof l.deactivate === 'function') {
           try { l.deactivate(); } catch (e) { /* ignore */ }
         } else if (typeof l.triggerBurst === 'function') {
-          // 退避用にドット等は deactive が無ければ dots = []
-          try { if (l.dots) l.dots.length = 0; if (l.shapes) l.shapes.length = 0; } catch (e) {}
+          // 退避用にドット等は deactive が無ければ arrays をクリア
+          try { if (l.dots) l.dots.length = 0; if (l.shapes) l.shapes.length = 0; if (l.rings) l.rings.length = 0; } catch (e) {}
         }
       }
     }
@@ -573,9 +711,10 @@
     if (!window._animLayers) window._animLayers = [];
     if (!window._hexManager) window._hexManager = new HexOutlineManager();
     if (!window._dotManager) window._dotManager = new DotManager();
+    if (!window._ringManager) window._ringManager = new CircleOutlineManager();
 
     // レイヤ配列（拡張性：新しいアニメを追加したら register すればスケジューラで選べる）
-    window._animLayers = [window._hexManager, window._dotManager];
+    window._animLayers = [window._hexManager, window._dotManager, window._ringManager];
 
     // スケジューラ生成（singleton）
     if (!window._animScheduler) {
