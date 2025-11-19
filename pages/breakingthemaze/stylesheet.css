@@ -1,11 +1,16 @@
+:root{
+  --base-color: hsl(120 48% 38%);
+  --bg-color: hsl(120 20% 96%);
+}
+
 body.theme-tsuki {
-  background: #D7C7DC;
+  background: var(--bg-color, #C2C1DC);
   margin: 0;
   color: #222;
 }
 
 body.theme-dark {
-  background: #0a0a0a;
+  background: var(--bg-color, #0a0a0a);
   margin: 0;
   color: #ffffff;
 }
@@ -109,7 +114,7 @@ body.theme-dark .theme-toggle:hover {
   font-weight: bold;
   margin-bottom: 1.5em;
   text-decoration: none;
-  color: #090;
+  color: var(--base-color, #090);
 }
 
 .toc {

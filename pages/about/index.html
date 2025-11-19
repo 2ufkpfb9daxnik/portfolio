@@ -1,32 +1,30 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>紹介</title>
-  <link rel="stylesheet" href="stylesheet.css">
+  <link rel="stylesheet" href="stylesheet.css" />
 </head>
 <body class="theme-tsuki">
   <div class="layout">
     <nav class="sidebar">
-      <a class="home-link" href="../../index.html">home</a>
+      <a class="home-link" href="../../../index.html">home</a>
       <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
-      <div class="toc">
-        <ul>
-        <li><a href="#できること"
-        id="toc-できること">できること</a></li>
-        <li><a href="#やってみたいやりたいこと"
-        id="toc-やってみたいやりたいこと">やってみたい・やりたいこと</a></li>
-        <li><a href="#作ったもの関わったもの"
-        id="toc-作ったもの関わったもの">作ったもの・関わったもの</a></li>
-        </ul>
-      </div>
+      <div class="toc"><ul>
+<li><a href="#できること" id="toc-できること">できること</a></li>
+<li><a href="#やってみたいやりたいこと"
+id="toc-やってみたいやりたいこと">やってみたい・やりたいこと</a></li>
+<li><a href="#作ったもの関わったもの"
+id="toc-作ったもの関わったもの">作ったもの・関わったもの</a></li>
+</ul></div>
     </nav>
     <main class="main-content">
       <div class="home-top">
         <a href="../../index.html">home</a>
         <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
       </div>
+
       <div id="content-wrapper"><p>作成: 2025-07-29 00:14</p>
 <p>高専4年 情報科</p>
 <p>広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。<a
@@ -102,101 +100,13 @@ href="https://s-ao213.github.io/PBL/User/">応用専門PBL1という授業で作
 href="https://github.com/2ufkpfb9daxnik/handwritten-formula">2024年度のnaist
 stellaプログラムで作った手書き数式のデータセット</a></li>
 </ul>
-<p>最終更新: 2025-07-31 00:39</p></div>
+<p>最終更新: 2025-11-20 02:08</p></div>
+
       <div class="home-bottom"><a href="../../index.html">home</a></div>
     </main>
   </div>
 
-  <script>
-    // ダークモード機能
-    function toggleTheme() {
-      const body = document.body;
-      const isDark = body.classList.contains('theme-dark');
-      
-      if (isDark) {
-        body.classList.remove('theme-dark');
-        body.classList.add('theme-tsuki');
-      } else {
-        body.classList.remove('theme-tsuki');
-        body.classList.add('theme-dark');
-      }
-      
-      // 設定を保存
-      const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
-      document.cookie = `theme=; path=/; max-age=31536000`; // 1年間保存
-    }
-    
-    // ページ読み込み時にテーマを復元
-    function loadTheme() {
-      const cookies = document.cookie.split(';');
-      let theme = 'tsuki'; // デフォルト
-      
-      for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'theme') {
-          theme = value;
-          break;
-        }
-      }
-      
-      const body = document.body;
-      body.classList.remove('theme-tsuki', 'theme-dark');
-      body.classList.add(`theme-`);
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-      // テーマを先に読み込み
-      loadTheme();
-      
-      const contentWrapper = document.getElementById('content-wrapper');
-      const content = contentWrapper.innerHTML;
-      
-      // h2とh3で分割するための正規表現
-      const sectionRegex = /(<h[23][^>]*>.*?<\/h[23]>)/gi;
-      
-      // コンテンツをh2/h3で分割
-      const parts = content.split(sectionRegex);
-      let newHTML = '';
-      let currentSection = '';
-      let inSection = false;
-      
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        
-        // h2またはh3の見出しかチェック
-        if (part.match(/^<h[23]/i)) {
-          // 前のセクションを閉じる
-          if (inSection && currentSection.trim()) {
-            newHTML += '<div class="container-section">' + currentSection + '</div>';
-          }
-          // 新しいセクションを開始
-          currentSection = part;
-          inSection = true;
-        } else if (part.trim()) {
-          // 通常のコンテンツ
-          if (inSection) {
-            currentSection += part;
-          } else {
-            // 最初のセクション（見出しなし）
-            if (!newHTML && part.trim()) {
-              newHTML += '<div class="container-section">' + part + '</div>';
-            }
-          }
-        }
-      }
-      
-      // 最後のセクションを閉じる
-      if (inSection && currentSection.trim()) {
-        newHTML += '<div class="container-section">' + currentSection + '</div>';
-      }
-      
-      // 結果が空の場合は元のコンテンツを1つのセクションとして表示
-      if (!newHTML.trim()) {
-        newHTML = '<div class="container-section">' + content + '</div>';
-      }
-      
-      contentWrapper.innerHTML = newHTML;
-    });
-  </script>
+  <!-- 統合スクリプトを外部から読み込む -->
+  <script src="script.js"></script>
 </body>
 </html>

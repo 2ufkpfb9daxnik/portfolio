@@ -1,3 +1,4 @@
+// ...existing code...
 (function () {
   // === グローバル設定（ここだけ触れば各アニメの主要パラメータを変更できます） ===
   const ANIM_CONFIG = {
@@ -144,56 +145,163 @@
     }
     return { h: 0, s: 0, l: L };
   }
-  function monoColor(alpha, deltaL=0) {
-    const g = getBaseGrayHSL();
-    let L = clamp(g.l + deltaL, 0, 100);
-    return `hsla(0 0% ${L}% / ${alpha})`;
+
+  // --- カラー補助（修正版：CSS変数/hsl/rgb/hex/色名を確実に拾う） ---
+  function parseColorToHsl(str) {
+    if (!str) return null;
+    str = String(str).trim();
+    // hsl / hsla
+    let m = str.match(/hsla?\(\s*([^\)]+)\)/i);
+    if (m) {
+      const parts = m[1].split(/[,\/\s]+/).filter(Boolean);
+      const h = parseFloat(parts[0]) || 0;
+      const s = parseFloat((parts[1] || '0').toString().replace('%', '')) || 0;
+      const l = parseFloat((parts[2] || '0').toString().replace('%', '')) || 0;
+      return { h: ((h % 360) + 360) % 360, s: clamp(Math.round(s), 0, 100), l: clamp(Math.round(l), 0, 100) };
+    }
+    // rgb / rgba
+    m = str.match(/rgba?\(\s*([^\)]+)\)/i);
+    if (m) {
+      const parts = m[1].split(',').map(p => p.trim());
+      const r = parseFloat(parts[0]) || 0;
+      const g = parseFloat(parts[1]) || 0;
+      const b = parseFloat(parts[2]) || 0;
+      const hsl = rgbToHsl(r, g, b);
+      return { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) };
+    }
+    // hex (#rgb or #rrggbb)
+    m = str.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (m) {
+      let hex = m[1];
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      const hsl = rgbToHsl(r, g, b);
+      return { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) };
+    }
+    // 色名やその他の CSS 表記を解決するため、一時要素で computedStyle を使う
+    try {
+      const el = document.createElement('div');
+      el.style.color = str;
+      el.style.display = 'none';
+      document.body.appendChild(el);
+      const comp = getComputedStyle(el).color;
+      document.body.removeChild(el);
+      if (comp) return parseColorToHsl(comp);
+    } catch (e) { /* ignore */ }
+    return null;
   }
 
   function getBaseColorHSL() {
-    const doc = document.documentElement;
-    let v = getComputedStyle(doc).getPropertyValue('--base-color') || '';
-    v = (v || '').trim();
-    if (!v) {
-      const el = document.querySelector('.home-link') || document.body;
-      v = getComputedStyle(el).color || '';
+    // まず :root の --base-color を試す（開発側で設定している想定）
+    let raw = getComputedStyle(document.documentElement).getPropertyValue('--base-color') || '';
+    raw = raw.trim();
+    // 取得できなければページ内の代表的な要素色を試す
+    if (!raw) {
+      const el = document.querySelector('.home-link') || document.querySelector('header') || document.body;
+      raw = getComputedStyle(el).color || '';
     }
-    const rgb = parseRgb(v) || parseRgb(getComputedStyle(document.body).color) || { r: 120, g: 120, b: 120, a: 1 };
-    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    return { h: Math.round(hsl.h), s: Math.min(60, Math.round(hsl.s * 0.9)), l: Math.round(hsl.l) };
-  }
-  function baseColorAlpha(alpha, deltaL = 0) {
-    const c = getBaseColorHSL();
-    const L = clamp(c.l + deltaL, 0, 100);
-    return `hsla(${c.h} ${c.s}% ${L}% / ${alpha})`;
+    // 解析して HSL を得る（失敗時は控えめな緑をデフォルト）
+    const parsed = parseColorToHsl(raw) || parseColorToHsl(getComputedStyle(document.body).color) || { h: 120, s: 36, l: 48 };
+    // 読みやすさのため saturation / lightness を一定範囲に制限
+    parsed.s = clamp(parsed.s || 36, 18, 75);
+    parsed.l = clamp(parsed.l || 48, 14, 72);
+    return { h: Math.round(parsed.h), s: Math.round(parsed.s), l: Math.round(parsed.l) };
   }
 
   // 背景色ベースのカラー取得（全描画に使う）
+  // 変更：優先してランダム生成済みの window._animBgHSL / window._animBaseHSL を使う
   function getBackgroundColorHSL() {
-    const bg = getComputedStyle(document.body).backgroundColor || '';
-    const rgb = parseRgb(bg);
-    if (!rgb) return getBaseColorHSL();
-    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    return { h: Math.round(hsl.h), s: Math.min(70, Math.round(hsl.s * 0.95)), l: Math.round(hsl.l) };
+    if (window._animBgHSL) return Object.assign({}, window._animBgHSL);
+    // try computed style (supports modern hsl(...) syntax via parseColorToHsl)
+    const bodyBg = document.body.style.background || getComputedStyle(document.body).backgroundColor || getComputedStyle(document.documentElement).getPropertyValue('--bg-color') || '';
+    const parsed = parseColorToHsl(bodyBg) || getBaseColorHSL();
+    parsed.s = clamp(parsed.s || 0, 0, 100);
+    parsed.l = clamp(parsed.l || 95, 0, 100);
+    return { h: Math.round(parsed.h), s: Math.round(parsed.s), l: Math.round(parsed.l) };
   }
+
+  // アニメの描画色はベースカラー（--base-color）を優先して使うようにする
   function backgroundColorAlpha(alpha, deltaL = 0) {
-    const c = getBackgroundColorHSL();
-    const L = clamp(c.l + deltaL, 0, 100);
-    return `hsla(${c.h} ${c.s}% ${L}% / ${alpha})`;
+    const base = window._animBaseHSL || getBaseColorHSL();
+    const L = clamp(base.l + deltaL, 0, 100);
+    // modern CSS hsla with slash alpha for consistent parsing
+    return `hsla(${base.h} ${base.s}% ${L}% / ${alpha})`;
+  }
+
+  // ランダムな淡色（薄め）のベースカラーと背景色を決めて CSS 変数にセットする
+  function pickRandomPastelColors() {
+    // ベース色（線・アクセント用）: hue 任意, saturation 中〜低, lightness 中程度（目立つが柔らかい）
+    const hue = Math.floor(rand(0, 360));
+    const sat = Math.floor(rand(20, 56)); // 適度な彩度
+    const light = Math.floor(rand(36, 56)); // 中くらいの明るさ（線の色）
+    const baseHsl = { h: hue, s: sat, l: light };
+
+    // 背景色: 同じ hue を使いつつ飽和度を低く、明度を高めにして「薄い」背景を作る
+    const bgS = Math.floor(clamp(baseHsl.s * rand(0.08, 0.28), 2, 18));
+    const bgL = Math.floor(rand(92, 98)); // 非常に明るい背景
+    const bgHsl = { h: hue, s: bgS, l: bgL };
+
+    return { baseHsl, bgHsl };
+  }
+
+  function setRandomThemeColors(force = false) {
+    // 既に生成済みで force=false の場合は上書きしない
+    if (window._animBaseHSL && window._animBgHSL && !force) return;
+    const picked = pickRandomPastelColors();
+    window._animBaseHSL = picked.baseHsl;
+    window._animBgHSL = picked.bgHsl;
+
+    // CSS 変数へ設定（他のスタイルがこれを参照できる）
+    document.documentElement.style.setProperty('--base-color', `hsl(${picked.baseHsl.h} ${picked.baseHsl.s}% ${picked.baseHsl.l}%)`);
+    document.documentElement.style.setProperty('--bg-color', `hsl(${picked.bgHsl.h} ${picked.bgHsl.s}% ${picked.bgHsl.l}%)`);
   }
 
   // 背景の適用を中央管理（ダーク↔ライト切替で消える問題の修正）
   function applyBodyBackground() {
-    // theme のクラスに応じて body.style.background を適切に設定
-    const body = document.body;
-    const isDark = body.classList.contains('theme-dark');
-    if (isDark) {
-      // ダークでは CSS に任せる（インライン背景は消す）
-      body.style.background = '';
-    } else {
-      // ライト系（theme-tsuki 等）はベースグレイを使って背景を明示設定
-      const g = getBaseGrayHSL();
-      body.style.background = `hsl(0 0% ${g.l}% )`;
+    // 再入ガード（レイヤー側の onThemeChange が再度ここを呼ぶループを防ぐ）
+    if (window._animThemeApplying) return;
+    window._animThemeApplying = true;
+    try {
+      // theme のクラスに応じて body.style.background を適切に設定
+      const body = document.body;
+      const isDark = body.classList.contains('theme-dark');
+
+      if (isDark) {
+        // ダークでは背景を暗く、アニメ色は明るめにする
+        // ベース色がある場合はその hue を使ってダーク背景を作る（またはデフォルトの黒寄せ）
+        const base = window._animBaseHSL || { h: 210, s: 10, l: 8 };
+        // 背景を非常に暗くする（若干色味を残す）
+        const darkBg = `hsl(${base.h} ${Math.max(4, Math.floor(base.s * 0.3))}% ${Math.max(6, Math.floor(base.l * 0.12))}%)`;
+        body.style.background = darkBg;
+        // アニメ描画用のベースは視認性のため明度を上げたものにする（ただし彩度は控えめ）
+        window._animBaseHSL = { h: base.h, s: clamp(Math.max(28, base.s), 18, 90), l: clamp(Math.max(48, base.l), 14, 90) };
+        // 確認のため CSS 変数も更新
+        document.documentElement.style.setProperty('--base-color', `hsl(${window._animBaseHSL.h} ${window._animBaseHSL.s}% ${window._animBaseHSL.l}%)`);
+      } else {
+        // ライト系（theme-tsuki 等）はベースの薄い背景を使って背景を明示設定
+        if (!window._animBgHSL) {
+          setRandomThemeColors(true);
+        }
+        const g = window._animBgHSL || getBaseGrayHSL();
+        body.style.background = `hsl(${g.h} ${g.s}% ${g.l}%)`;
+        // アニメ描画用のベースは既に setRandomThemeColors で設定されていることを期待
+        if (!window._animBaseHSL) setRandomThemeColors(true);
+        document.documentElement.style.setProperty('--bg-color', `hsl(${g.h} ${g.s}% ${g.l}%)`);
+        document.documentElement.style.setProperty('--base-color', `hsl(${window._animBaseHSL.h} ${window._animBaseHSL.s}% ${window._animBaseHSL.l}%)`);
+      }
+
+      // 既存のアニメレイヤーがあればテーマ変更ハンドラを呼ぶ（toggleTheme でも行われるがここでも安全に）
+      if (window._animLayers) {
+        for (const l of window._animLayers) {
+          if (l && typeof l.onThemeChange === 'function') {
+            try { l.onThemeChange(); } catch (e) { /* ignore */ }
+          }
+        }
+      }
+    } finally {
+      window._animThemeApplying = false;
     }
   }
 
@@ -210,6 +318,18 @@
     }
     const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
     document.cookie = 'theme=' + currentTheme + '; path=/; max-age=31536000';
+
+    // テーマ切替ごとにアニメ色の最適化を行う（ダークなら明るめ、ライトなら淡背景）
+    if (body.classList.contains('theme-dark')) {
+      // keep base hue but adapt brightness/saturation for dark theme visibility
+      if (!window._animBaseHSL) setRandomThemeColors(true);
+      const b = window._animBaseHSL;
+      window._animBaseHSL = { h: b.h, s: clamp(Math.max(30, b.s), 18, 90), l: clamp(Math.max(48, b.l), 20, 92) };
+    } else {
+      // ライトへ戻る際は背景とベース色を再生成して「毎回ランダム」を実現
+      setRandomThemeColors(true);
+    }
+
     applyBodyBackground();
     if (window._animLayers) {
       for (const l of window._animLayers) {
@@ -1382,6 +1502,10 @@
   // --- 初期化 ---
   function initAnimationSystem() {
     if (!window._animLayers) window._animLayers = [];
+
+    // 先に色を決めておく（毎回ランダムな淡色）
+    setRandomThemeColors(true);
+
     if (!window._hexManager) window._hexManager = new HexOutlineManager();
     if (!window._dotManager) window._dotManager = new DotManager();
     if (!window._ringManager) window._ringManager = new CircleOutlineManager();
@@ -1402,6 +1526,8 @@
 
   // --- DOM 初期化 ---
   document.addEventListener('DOMContentLoaded', function () {
+    // まず毎回ランダム色を決める（ライト側の背景／ベース色）
+    setRandomThemeColors(true);
     loadTheme();
     splitContentToSections();
     buildTocFromHeadings();
