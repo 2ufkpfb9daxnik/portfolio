@@ -150,23 +150,69 @@
     return `hsla(0 0% ${L}% / ${alpha})`;
   }
 
-  function getBaseColorHSL() {
-    const doc = document.documentElement;
-    let v = getComputedStyle(doc).getPropertyValue('--base-color') || '';
-    v = (v || '').trim();
-    if (!v) {
-      const el = document.querySelector('.home-link') || document.body;
-      v = getComputedStyle(el).color || '';
-    }
-    const rgb = parseRgb(v) || parseRgb(getComputedStyle(document.body).color) || { r: 120, g: 120, b: 120, a: 1 };
-    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-    return { h: Math.round(hsl.h), s: Math.min(60, Math.round(hsl.s * 0.9)), l: Math.round(hsl.l) };
+// --- カラー補助（修正版：CSS変数/hsl/rgb/hex/色名を確実に拾う） ---
+function parseColorToHsl(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  // hsl / hsla
+  let m = str.match(/hsla?\(\s*([^\)]+)\)/i);
+  if (m) {
+    const parts = m[1].split(/[,\/\s]+/).filter(Boolean);
+    const h = parseFloat(parts[0]) || 0;
+    const s = parseFloat((parts[1] || '0').toString().replace('%', '')) || 0;
+    const l = parseFloat((parts[2] || '0').toString().replace('%', '')) || 0;
+    return { h: ((h % 360) + 360) % 360, s: clamp(Math.round(s), 0, 100), l: clamp(Math.round(l), 0, 100) };
   }
-  function baseColorAlpha(alpha, deltaL = 0) {
-    const c = getBaseColorHSL();
-    const L = clamp(c.l + deltaL, 0, 100);
-    return `hsla(${c.h} ${c.s}% ${L}% / ${alpha})`;
+  // rgb / rgba
+  m = str.match(/rgba?\(\s*([^\)]+)\)/i);
+  if (m) {
+    const parts = m[1].split(',').map(p => p.trim());
+    const r = parseFloat(parts[0]) || 0;
+    const g = parseFloat(parts[1]) || 0;
+    const b = parseFloat(parts[2]) || 0;
+    const hsl = rgbToHsl(r, g, b);
+    return { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) };
   }
+  // hex (#rgb or #rrggbb)
+  m = str.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (m) {
+    let hex = m[1];
+    if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    const hsl = rgbToHsl(r, g, b);
+    return { h: Math.round(hsl.h), s: Math.round(hsl.s), l: Math.round(hsl.l) };
+  }
+  // 色名やその他の CSS 表記を解決するため、一時要素で computedStyle を使う
+  try {
+    const el = document.createElement('div');
+    el.style.color = str;
+    el.style.display = 'none';
+    document.body.appendChild(el);
+    const comp = getComputedStyle(el).color;
+    document.body.removeChild(el);
+    if (comp) return parseColorToHsl(comp);
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function getBaseColorHSL() {
+  // まず :root の --base-color を試す（開発側で設定している想定）
+  let raw = getComputedStyle(document.documentElement).getPropertyValue('--base-color') || '';
+  raw = raw.trim();
+  // 取得できなければページ内の代表的な要素色を試す
+  if (!raw) {
+    const el = document.querySelector('.home-link') || document.querySelector('header') || document.body;
+    raw = getComputedStyle(el).color || '';
+  }
+  // 解析して HSL を得る（失敗時は控えめな緑をデフォルト）
+  const parsed = parseColorToHsl(raw) || parseColorToHsl(getComputedStyle(document.body).color) || { h: 120, s: 36, l: 48 };
+  // 読みやすさのため saturation / lightness を一定範囲に制限
+  parsed.s = clamp(parsed.s || 36, 18, 75);
+  parsed.l = clamp(parsed.l || 48, 14, 72);
+  return { h: Math.round(parsed.h), s: Math.round(parsed.s), l: Math.round(parsed.l) };
+}
 
   // 背景色ベースのカラー取得（全描画に使う）
   function getBackgroundColorHSL() {
