@@ -29,14 +29,13 @@
       // 速度(px/s)（speedMultiplier が掛かる）
       vxRange: [-120, 120],
       vyRange: [-120, 120],
-      // （点に寿命は付けない要求のため life は使わない。必要なら設定して管理可能）
-      // チカチカ（アルファ変化）頻度範囲 (Hz) — ゆったり目に設定
+      // チカチカ（アルファ変化）頻度範囲 (Hz) — ゆったり目
       flickerHzRange: [0.4, 1.2],
       // キャンバス最大保持点数（安全装置）
       maxDots: 600
     },
 
-    // --- 円枠（Ring）アニメ固有設定（新規追加） ---
+    // --- 円枠（Ring）アニメ固有設定 ---
     circle: {
       // 1トリガーで発生させる円の個数
       spawnCountRange: [12, 20],
@@ -54,6 +53,34 @@
       maxRings: 240
     },
 
+    // --- 木（Tree）アニメ固有設定（新規追加） ---
+    tree: {
+      // トリガーで作る「枝の起点」個数
+      spawnCountRange: [10, 12],
+      // 最初の枝の長さ(px)
+      initialLengthRange: [100, 160],
+      // セグメントの成長速度(px/s)
+      growthRange: [500, 1200],
+      // 子枝へ繋ぐ際の長さ係数（子 = parent.length * lengthDecay）
+      lengthDecay: 1,
+      // 最大分岐深度（0が起点）
+      maxDepth: 500,
+      // 分岐確率（各完了セグメントごと）
+      branchProb: 1,
+      // 1セグメントが伸びきった時に分岐する子数の範囲
+      splitRange: [2, 4],
+      // 分岐角の広がり（度）
+      spreadDegRange: [18, 48],
+      // 線幅の初期範囲
+      thicknessRange: [3.0, 0.6],
+      // 子枝ごとの太さ減衰（掛ける）
+      thicknessDecay: 1,
+      // 完了してから表示を残す時間(ms)
+      holdAfterComplete: 1200,
+      // 最大保持枝数（安全装置）
+      maxBranches: 4800
+    },
+
     // --- スケジューラ設定（複数アニメからランダムに選んでトリガー） ---
     scheduler: {
       // 次のトリガーまでの間隔(ms)
@@ -67,6 +94,7 @@
   function rand(a, b) { return a + Math.random() * (b - a); }
   function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function degToRad(d) { return d * Math.PI / 180; }
   function slugify(text) {
     return (text || '').toLowerCase().replace(/[\s\/\\]+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/\-+/g, '-').replace(/^\-|\-$/g, '');
   }
@@ -519,7 +547,7 @@
     }
   }
 
-  // === 円枠（Ring）アニメクラス（新規追加） ===
+  // === 円枠（Ring）アニメクラス ===
   class CircleOutlineManager {
     constructor() {
       // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.circle を編集してください） ---
@@ -597,7 +625,7 @@
       const now = performance.now();
       for (let i = this.rings.length - 1; i >= 0; i--) {
         const R = this.rings[i];
-        R.r += R.growth * dt; // dt は秒単位で来る（loop で調整）
+        R.r += R.growth * dt; // dt は秒単位
         const age = now - R.created;
         const t = clamp(age / R.life, 0, 1);
         // フェードアウト
@@ -639,6 +667,191 @@
     }
   }
 
+// ...existing code...
+class TreeManager {
+  constructor() {
+    // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.tree を編集してください） ---
+    this.cfg = ANIM_CONFIG.tree;
+    this.speedMul = ANIM_CONFIG.speedMultiplier;
+
+    const old = document.getElementById('tree-canvas');
+    if (old && old.parentNode) old.parentNode.removeChild(old);
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.id = 'tree-canvas';
+    Object.assign(this.canvas.style, {
+      position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+      zIndex: '-1', pointerEvents: 'none'
+    });
+    document.body.appendChild(this.canvas);
+
+    this.ctx = this.canvas.getContext('2d', { alpha: true });
+    this.dpr = window.devicePixelRatio || 1;
+    this.branches = []; // 全ての枝セグメントオブジェクト（FIFO: 先頭が最も古い）
+    this.time = performance.now();
+
+    // 初期非アクティブ（スケジューラが切り替える）
+    this.active = false;
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.loop();
+  }
+
+  onThemeChange() {
+    // ベースカラー優先なので特別処理不要
+  }
+
+  resize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
+    this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.w = w; this.h = h;
+  }
+
+  // 古い枝を先頭から削って必要な空きスペースを確保する
+  _ensureSpace(needCount) {
+    const max = this.cfg.maxBranches;
+    while (this.branches.length + needCount > max) {
+      // 先頭（最も古い）を削除
+      this.branches.shift();
+    }
+  }
+
+  // 外部トリガ：起点を複数生成して成長を開始する
+  triggerBurst() {
+    this.activate();
+    const n = randInt(this.cfg.spawnCountRange[0], this.cfg.spawnCountRange[1]);
+    // 事前に空き確保（古いものから削る）
+    this._ensureSpace(n);
+    for (let i = 0; i < n; i++) {
+      if (this.branches.length >= this.cfg.maxBranches) break;
+      // 枝の起点は画面のランダム位置（根は描かないため画面中央付近でも可）
+      const x = rand(0, this.w);
+      const y = rand(0, this.h);
+      const len = rand(this.cfg.initialLengthRange[0], this.cfg.initialLengthRange[1]);
+      const angle = rand(0, Math.PI * 2); // 全方向に伸びる枝に対応
+      const growth = rand(this.cfg.growthRange[0], this.cfg.growthRange[1]) * this.speedMul;
+      const thickness = rand(this.cfg.thicknessRange[0], this.cfg.thicknessRange[1]);
+      const branch = this._createBranch(x, y, angle, len, growth, thickness, 0);
+      this.branches.push(branch);
+    }
+    // 追加直後の超過チェック（念のため）
+    if (this.branches.length > this.cfg.maxBranches) {
+      this.branches.splice(0, this.branches.length - this.cfg.maxBranches);
+    }
+  }
+
+  // アクティブ化 / 非アクティブ化
+  activate() { this.active = true; }
+  deactivate() {
+    this.active = false;
+    this.branches.length = 0;
+    if (this.ctx) this.ctx.clearRect(0, 0, this.w || 0, this.h || 0);
+  }
+
+  // 単一枝オブジェクト生成
+  _createBranch(x, y, angle, targetLength, growth, thickness, depth) {
+    return {
+      x, y, angle, targetLength, currentLength: 0,
+      growth, thickness, depth,
+      childrenSpawned: false,
+      finished: false,
+      finishedAt: null,
+      created: performance.now()
+    };
+  }
+
+  update(dt) {
+    if (!this.active) return;
+    const now = performance.now();
+    // dt は秒単位
+    for (let i = this.branches.length - 1; i >= 0; i--) {
+      const b = this.branches[i];
+      if (!b.finished) {
+        b.currentLength += b.growth * dt;
+        if (b.currentLength >= b.targetLength) {
+          b.currentLength = b.targetLength;
+          b.finished = true;
+          b.finishedAt = now;
+        }
+      } else if (b.finished && b.childrenSpawned === false) {
+        // 成長完了したら分岐を試みる（確率）
+        if (b.depth < this.cfg.maxDepth && Math.random() < this.cfg.branchProb) {
+          const splits = randInt(this.cfg.splitRange[0], this.cfg.splitRange[1]);
+          // 分岐を作る前に必要数分の空き確保（古い枝から削る）
+          this._ensureSpace(splits);
+          for (let s = 0; s < splits; s++) {
+            if (this.branches.length >= this.cfg.maxBranches) break;
+            const endX = b.x + Math.cos(b.angle) * b.targetLength;
+            const endY = b.y + Math.sin(b.angle) * b.targetLength;
+            const spread = rand(this.cfg.spreadDegRange[0], this.cfg.spreadDegRange[1]);
+            const sign = Math.random() < 0.5 ? -1 : 1;
+            const childAngle = b.angle + degToRad(spread * sign * rand(0.4, 1.0));
+            // 子の長さ・太さは親と同じ（減衰しない）
+            const childLen = b.targetLength;
+            const childGrowth = rand(this.cfg.growthRange[0], this.cfg.growthRange[1]) * this.speedMul;
+            const childThickness = b.thickness;
+            const child = this._createBranch(endX, endY, childAngle, childLen, childGrowth, childThickness, b.depth + 1);
+            this.branches.push(child);
+          }
+        }
+        b.childrenSpawned = true;
+      } else if (b.finished && b.finishedAt) {
+        // 表示保持時間を過ぎたら削除
+        if (now - b.finishedAt > this.cfg.holdAfterComplete) {
+          this.branches.splice(i, 1);
+        }
+      }
+    }
+    // 常に上限を超えないように先頭から削る（ここでも安全確保）
+    if (this.branches.length > this.cfg.maxBranches) {
+      this.branches.splice(0, this.branches.length - this.cfg.maxBranches);
+    }
+  }
+
+  draw() {
+    if (!this.active) return;
+    this.ctx.clearRect(0, 0, this.w, this.h);
+    for (const b of this.branches) {
+      // 線は始点から現在の長さ分だけ描く
+      const len = Math.max(0.5, b.currentLength);
+      const ex = b.x + Math.cos(b.angle) * len;
+      const ey = b.y + Math.sin(b.angle) * len;
+      this.ctx.save();
+      // 深さに応じてやや薄くする（見た目調整） — ただし大幅な細分化はしない
+      const depthFade = 1 - clamp(b.depth / (this.cfg.maxDepth + 1), 0, 0.9);
+      this.ctx.globalAlpha = depthFade * 1.0;
+      this.ctx.lineWidth = Math.max(0.3, b.thickness);
+      this.ctx.strokeStyle = baseColorAlpha(1.0, -6);
+      this.ctx.beginPath();
+      this.ctx.moveTo(b.x, b.y);
+      this.ctx.lineTo(ex, ey);
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
+  }
+
+  loop() {
+    const now = performance.now();
+    const dt = (now - this.time) * 0.001; // 秒
+    this.time = now;
+    this.update(dt);
+    this.draw();
+    this.raf = requestAnimationFrame(() => this.loop());
+  }
+
+  destroy() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    const c = document.getElementById('tree-canvas');
+    if (c && c.parentNode) c.parentNode.removeChild(c);
+  }
+}
+// ...existing code...
+
   // === アニメレイヤ登録とスケジューラ ===
   class AnimationScheduler {
     constructor() {
@@ -660,9 +873,8 @@
       for (const l of this.layers) {
         if (typeof l.deactivate === 'function') {
           try { l.deactivate(); } catch (e) { /* ignore */ }
-        } else if (typeof l.triggerBurst === 'function') {
-          // 退避用にドット等は deactive が無ければ arrays をクリア
-          try { if (l.dots) l.dots.length = 0; if (l.shapes) l.shapes.length = 0; if (l.rings) l.rings.length = 0; } catch (e) {}
+        } else {
+          try { if (l.dots) l.dots.length = 0; if (l.shapes) l.shapes.length = 0; if (l.rings) l.rings.length = 0; if (l.branches) l.branches.length = 0; } catch (e) {}
         }
       }
     }
@@ -712,9 +924,10 @@
     if (!window._hexManager) window._hexManager = new HexOutlineManager();
     if (!window._dotManager) window._dotManager = new DotManager();
     if (!window._ringManager) window._ringManager = new CircleOutlineManager();
+    if (!window._treeManager) window._treeManager = new TreeManager();
 
     // レイヤ配列（拡張性：新しいアニメを追加したら register すればスケジューラで選べる）
-    window._animLayers = [window._hexManager, window._dotManager, window._ringManager];
+    window._animLayers = [window._hexManager, window._dotManager, window._ringManager, window._treeManager];
 
     // スケジューラ生成（singleton）
     if (!window._animScheduler) {
