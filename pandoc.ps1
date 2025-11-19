@@ -200,10 +200,13 @@ if ($firstSegment -eq 'pages') {
     $HomePath = "../index.html"
 }
 
-# 文字列置換（script 内はまだそのまま）
-$HtmlContent = $HtmlContent.Replace('../index.html', $HomePath)
-$HtmlContent = $HtmlContent.Replace('href="../index.html"', 'href="' + $HomePath + '"')
-$HtmlContent = $HtmlContent.Replace('href="index.html"', 'href="' + $HomePath + '"')
+# 文字列置換（href 属性内の任意階層 ../ を正規化して置換）
+# 例: href="index.html", href="../index.html", href="../../index.html", href="../../../index.html" などを
+# 計算済みの $HomePath に統一する
+$HtmlContent = [regex]::Replace($HtmlContent, 'href\s*=\s*"(?:\.\.\/)*index\.html"', "href=`"$HomePath`"", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+# safety: href="index.html"（../ が無いケース）も上の正規表現でカバーするが、念のため残す
+$HtmlContent = [regex]::Replace($HtmlContent, 'href\s*=\s*"\s*index\.html\s*"', "href=`"$HomePath`"", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
 
 # script.js をテンプレートから出力先にコピー（存在すれば）
 if (Test-Path $TemplateScript) {
