@@ -1,36 +1,47 @@
 // ...existing code...
 (function () {
   // === グローバル設定（ここだけ触れば各アニメの主要パラメータを変更できます） ===
-  // すべてのコメントは日本語です。各アニメクラスの先頭にもクラス固有の設定ブロックを置いてありますが、
-  // 基本はこの ANIM_CONFIG を編集すれば統一的に調整できます。
+  // すべてのコメントは日本語です。各アニメクラス先頭にもクラス固有の設定ブロックを置いてあります。
   const ANIM_CONFIG = {
     // 全体の速度倍率（移動/回転/スケール速度に掛かります）
     speedMultiplier: 1.0,
 
     // --- 六角形アニメ固有設定 ---
+    // ※ユーザーの指定どおり現在の値を保持しています
     hex: {
-      // 初回に生成する個数の範囲（起動時にランダムで生成し、その後増減しません）
       initialCountRange: [12, 24],
-
-      // 角速度の範囲（ここを変えれば全インスタンスに反映されます）
       rotSpeedMin: -0.06,
       rotSpeedMax: 3,
-
-      // 位置速度の範囲（vx, vy）。実際は speedMultiplier を掛けて決定されます。
-      vxRange: [-0.6, 100],
-      vyRange: [-0.6, 100],
-
-      // スケール成長速度（範囲）。speedMultiplier を掛けて決定されます。
-      scaleVelRange: [-0.06, 1],
-
-      // 初期サイズの範囲（px）
-      sizeRange: [12, 120],
-
-      // 目標スケール（ここを超えても縮小はさせません／バウンス無し）
-      targetScale: 1.0,
-
-      // 最大保持個数（安全装置。initialCountRange を超えないように）
+      vxRange: [-100, 100],
+      vyRange: [-100, 100],
+      scaleVelRange: [0.06, 1],
+      sizeRange: [28, 120],
+      targetScale: 10,
       maxShapes: 220
+    },
+
+    // --- 点（Dot）アニメ固有設定 ---
+    dot: {
+      // 1トリガーあたりの生成個数範囲
+      spawnCountRange: [20, 50],
+      // dot の初期サイズ(px)
+      sizeRange: [2, 8],
+      // 速度(px/s)（speedMultiplier が掛かる）
+      vxRange: [-120, 120],
+      vyRange: [-120, 120],
+      // （点に寿命は付けない要求のため life は使わない。必要なら設定して管理可能）
+      // チカチカ（アルファ変化）頻度範囲 (Hz) — ゆったり目に設定
+      flickerHzRange: [0.4, 1.2],
+      // キャンバス最大保持点数（安全装置）
+      maxDots: 600
+    },
+
+    // --- スケジューラ設定（複数アニメからランダムに選んでトリガー） ---
+    scheduler: {
+      // 次のトリガーまでの間隔(ms)
+      intervalRange: [1000, 2000],
+      // 同時にトリガーする最大アニメ数（1以上）
+      concurrent: 1
     }
   };
 
@@ -39,7 +50,7 @@
   function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function slugify(text) {
-    return text.toLowerCase().replace(/[\s\/\\]+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/\-+/g, '-').replace(/^\-|\-$/g, '');
+    return (text || '').toLowerCase().replace(/[\s\/\\]+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/\-+/g, '-').replace(/^\-|\-$/g, '');
   }
 
   // --- テーマ切替（既存互換） ---
@@ -57,6 +68,13 @@
     document.cookie = 'theme=' + currentTheme + '; path=/; max-age=31536000';
     if (window._hexManager && typeof window._hexManager.onThemeChange === 'function') {
       try { window._hexManager.onThemeChange(); } catch (e) { /* ignore */ }
+    }
+    if (window._animLayers) {
+      for (const l of window._animLayers) {
+        if (l && typeof l.onThemeChange === 'function') {
+          try { l.onThemeChange(); } catch (e) { /* ignore */ }
+        }
+      }
     }
   }
 
@@ -200,23 +218,20 @@
   }
 
   // === 六角形アウトラインアニメクラス ===
-  // クラス冒頭に「このクラス固有の設定」を置いていますが、統一管理は上の ANIM_CONFIG.hex を使ってください。
   class HexOutlineManager {
     constructor() {
       // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.hex を編集してください） ---
       this.cfg = ANIM_CONFIG.hex;
       this.speedMul = ANIM_CONFIG.speedMultiplier;
 
-      // 既存キャンバスを削除（複数インスタンス防止）
       const old = document.getElementById('background-canvas');
       if (old && old.parentNode) old.parentNode.removeChild(old);
 
-      // キャンバス作成
       this.canvas = document.createElement('canvas');
       this.canvas.id = 'background-canvas';
       Object.assign(this.canvas.style, {
         position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
-        zIndex: '-1', pointerEvents: 'none'
+        zIndex: '-2', pointerEvents: 'none'
       });
       document.body.appendChild(this.canvas);
 
@@ -224,6 +239,9 @@
       this.dpr = window.devicePixelRatio || 1;
       this.shapes = [];
       this.time = performance.now();
+
+      // アクティブフラグ（別アニメに切り替えると deactivate() で false にする）
+      this.active = true;
 
       this.resize();
       window.addEventListener('resize', () => this.resize());
@@ -234,7 +252,7 @@
       this.loop();
     }
 
-    // テーマ変更時（ライトモード時に body 背景を設定）
+    // テーマ変更時
     onThemeChange() {
       if (!document.body.classList.contains('theme-dark')) {
         const baseGray = getBaseGrayHSL();
@@ -244,7 +262,6 @@
       }
     }
 
-    // リサイズ処理
     resize() {
       const w = window.innerWidth, h = window.innerHeight;
       this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
@@ -255,7 +272,6 @@
       this.w = w; this.h = h;
     }
 
-    // 初期にランダム個数だけ生成（その後は増減無し）
     spawnInitialShapes() {
       const n = randInt(this.cfg.initialCountRange[0], this.cfg.initialCountRange[1]);
       for (let i = 0; i < n && this.shapes.length < this.cfg.maxShapes; i++) {
@@ -263,7 +279,6 @@
       }
     }
 
-    // 形の生成（rotSpeedはANIM_CONFIGで一元管理）
     createShape() {
       const size = rand(this.cfg.sizeRange[0], this.cfg.sizeRange[1]);
       const x = rand(size, this.w - size);
@@ -284,30 +299,40 @@
       };
     }
 
-    // 更新：バウンスは無し。回転・移動・拡大のみ。個数は変化しない。
+    // 外部からのトリガ（スケジューラが選んだとき呼ぶ）
+    triggerBurst() {
+      // 六角形は「アクティブにして再生成」を行う
+      this.activate();
+    }
+
+    // アクティブ化（表示開始 / 再初期化）
+    activate() {
+      if (this.active) return;
+      this.active = true;
+      this.spawnInitialShapes();
+    }
+
+    // 非アクティブ化（描画停止・全消去）
+    deactivate() {
+      this.active = false;
+      this.shapes.length = 0;
+      if (this.ctx) this.ctx.clearRect(0, 0, this.w || 0, this.h || 0);
+    }
+
     update(dt) {
+      if (!this.active) return;
       for (let i = 0; i < this.shapes.length; i++) {
         const s = this.shapes[i];
 
-        // 回転（角速度は ANIM_CONFIG.hex で一元管理）
         s.angle += s.rotSpeed * dt * 0.001;
-
-        // 移動（そのまま画面外へ出ても問題なし）
         s.x += s.vx * dt * 0.001;
         s.y += s.vy * dt * 0.001;
 
-        // スケール成長（目標に達しても縮小させない）
         s.scale += s.scaleVel * dt * 0.001;
-        if (s.scale < 0.01) s.scale = 0.01; // 最低保証
-        // 必要なら最大スケールを設定する場合は ANIM_CONFIG.hex.targetScale を参照して clamp 可
-        if (typeof this.cfg.targetScale === 'number') {
-          // ここでは targetScale は「目標」で、超えても止めたければコメントを外す
-          // s.scale = Math.min(s.scale, this.cfg.targetScale);
-        }
+        if (s.scale < 0.01) s.scale = 0.01;
       }
     }
 
-    // 六角形パスを描画するヘルパー
     drawHexPath(ctx, cx, cy, r, angle) {
       ctx.beginPath();
       for (let i = 0; i < 6; i++) {
@@ -319,8 +344,8 @@
       ctx.closePath();
     }
 
-    // 描画：枠のみ（内側描画は行わない）
     draw() {
+      if (!this.active) return;
       this.ctx.clearRect(0, 0, this.w, this.h);
 
       for (const s of this.shapes) {
@@ -330,14 +355,13 @@
         this.ctx.rotate(s.angle);
         const r = s.size * 0.9 * (s.scale || 1);
         this.ctx.lineWidth = Math.max(1, 2.2 * (s.scale || 1));
-        this.ctx.strokeStyle = baseColorAlpha(alpha, -6); // ベースカラー優先
+        this.ctx.strokeStyle = baseColorAlpha(alpha, -6);
         this.drawHexPath(this.ctx, 0, 0, r, 0);
         this.ctx.stroke();
         this.ctx.restore();
       }
     }
 
-    // メインループ
     loop() {
       const now = performance.now();
       const dt = now - this.time;
@@ -347,7 +371,6 @@
       this.raf = requestAnimationFrame(() => this.loop());
     }
 
-    // 破棄処理
     destroy() {
       if (this.raf) cancelAnimationFrame(this.raf);
       const c = document.getElementById('background-canvas');
@@ -355,12 +378,216 @@
     }
   }
 
-  // 初期化処理
-  function initAnimationSystem() {
-    if (!window._hexManager) window._hexManager = new HexOutlineManager();
+  // === 点（Dot）アニメクラス ===
+  class DotManager {
+    constructor() {
+      // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.dot を編集してください） ---
+      this.cfg = ANIM_CONFIG.dot;
+      this.speedMul = ANIM_CONFIG.speedMultiplier;
+
+      const old = document.getElementById('dot-canvas');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+
+      this.canvas = document.createElement('canvas');
+      this.canvas.id = 'dot-canvas';
+      Object.assign(this.canvas.style, {
+        position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+        zIndex: '-1', pointerEvents: 'none'
+      });
+      document.body.appendChild(this.canvas);
+
+      this.ctx = this.canvas.getContext('2d', { alpha: true });
+      this.dpr = window.devicePixelRatio || 1;
+      this.dots = [];
+      this.time = performance.now();
+
+      // 初期は非アクティブ（スケジューラが activate -> triggerBurst して使用する）
+      this.active = false;
+
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+      this.loop();
+    }
+
+    onThemeChange() {
+      // ベースカラー優先なので特別処理不要
+    }
+
+    resize() {
+      const w = window.innerWidth, h = window.innerHeight;
+      this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
+      this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
+      this.canvas.style.width = w + 'px';
+      this.canvas.style.height = h + 'px';
+      this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.w = w; this.h = h;
+    }
+
+    // 外部からのトリガ：アクティブ化してバースト生成
+    triggerBurst() {
+      this.activate();
+      const count = randInt(this.cfg.spawnCountRange[0], this.cfg.spawnCountRange[1]);
+      for (let i = 0; i < count; i++) {
+        if (this.dots.length >= this.cfg.maxDots) break;
+        const size = rand(this.cfg.sizeRange[0], this.cfg.sizeRange[1]);
+        const x = rand(0, this.w);
+        const y = rand(0, this.h);
+        // vx/vy は px/s 単位。update では dt が秒なのでそのまま使う。
+        const vx = rand(this.cfg.vxRange[0], this.cfg.vxRange[1]) * this.speedMul;
+        const vy = rand(this.cfg.vyRange[0], this.cfg.vyRange[1]) * this.speedMul;
+        const flickerHz = rand(this.cfg.flickerHzRange[0], this.cfg.flickerHzRange[1]);
+        const dot = {
+          x, y, vx, vy, size,
+          created: performance.now(),
+          flickerHz, baseAlpha: rand(0.4, 0.9)
+          // 注：寿命は付けない（常に存在し続ける要求に対応）
+        };
+        this.dots.push(dot);
+      }
+    }
+
+    // アクティブ化（点アニメを受け付ける）
+    activate() {
+      this.active = true;
+    }
+
+    // 非アクティブ化（点を全消去して描画停止）
+    deactivate() {
+      this.active = false;
+      this.dots.length = 0;
+      if (this.ctx) this.ctx.clearRect(0, 0, this.w || 0, this.h || 0);
+    }
+
+    update(dt) {
+      if (!this.active) return;
+      const now = performance.now();
+      // dt は秒単位
+      for (let i = this.dots.length - 1; i >= 0; i--) {
+        const d = this.dots[i];
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        // ゆったりしたチカチカ（アルファ変化）
+        const age = (now - d.created) / 1000;
+        const flicker = 0.6 + 0.4 * Math.sin(2 * Math.PI * d.flickerHz * age + d.size);
+        d.alpha = clamp(d.baseAlpha * flicker, 0.08, 1.0);
+        // 画面外でも特に削除せず残すが、数が多い場合は上限で切る（trigger時に制御）
+      }
+    }
+
+    draw() {
+      if (!this.active) return;
+      this.ctx.clearRect(0, 0, this.w, this.h);
+      for (const d of this.dots) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = baseColorAlpha(d.alpha || 0.6, -6);
+        this.ctx.arc(d.x, d.y, Math.max(0.5, d.size * (d.alpha || 1)), 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+    }
+
+    loop() {
+      const now = performance.now();
+      const dt = (now - this.time) * 0.001; // 秒単位
+      this.time = now;
+      this.update(dt);
+      this.draw();
+      this.raf = requestAnimationFrame(() => this.loop());
+    }
+
+    destroy() {
+      if (this.raf) cancelAnimationFrame(this.raf);
+      const c = document.getElementById('dot-canvas');
+      if (c && c.parentNode) c.parentNode.removeChild(c);
+    }
   }
 
-  // DOM 初期化
+  // === アニメレイヤ登録とスケジューラ ===
+  class AnimationScheduler {
+    constructor() {
+      this.layers = []; // トリガ可能なレイヤ（activate/deactivate/triggerBurst を持つ）
+      this.time = performance.now();
+      this.last = 0;
+      this.nextInterval = rand(ANIM_CONFIG.scheduler.intervalRange[0], ANIM_CONFIG.scheduler.intervalRange[1]);
+      this.running = true;
+      this.loop();
+    }
+
+    register(layer) {
+      // レイヤは activate/deactivate を持つことが期待される
+      if (layer) this.layers.push(layer);
+    }
+
+    // 全レイヤを一旦停止（切り替え前に現在のアニメを全消去）
+    deactivateAll() {
+      for (const l of this.layers) {
+        if (typeof l.deactivate === 'function') {
+          try { l.deactivate(); } catch (e) { /* ignore */ }
+        } else if (typeof l.triggerBurst === 'function') {
+          // 退避用にドット等は deactive が無ければ dots = []
+          try { if (l.dots) l.dots.length = 0; if (l.shapes) l.shapes.length = 0; } catch (e) {}
+        }
+      }
+    }
+
+    // ランダムに1つ以上のレイヤを選んで activate + triggerBurst を呼ぶ
+    triggerRandom() {
+      if (this.layers.length === 0) return;
+      // 切り替え前に全消去
+      this.deactivateAll();
+
+      const n = Math.max(1, ANIM_CONFIG.scheduler.concurrent);
+      for (let i = 0; i < n; i++) {
+        const idx = Math.floor(Math.random() * this.layers.length);
+        const layer = this.layers[idx];
+        if (!layer) continue;
+        // まずアクティブ化（存在する場合）
+        if (typeof layer.activate === 'function') {
+          try { layer.activate(); } catch (e) { /* ignore */ }
+        }
+        // 次にトリガ（存在する場合）
+        if (typeof layer.triggerBurst === 'function') {
+          try { layer.triggerBurst(); } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
+    loop() {
+      if (!this.running) return;
+      const now = performance.now();
+      if (now - this.last >= this.nextInterval) {
+        this.last = now;
+        this.nextInterval = rand(ANIM_CONFIG.scheduler.intervalRange[0], ANIM_CONFIG.scheduler.intervalRange[1]);
+        this.triggerRandom();
+      }
+      this.raf = requestAnimationFrame(() => this.loop());
+    }
+
+    stop() {
+      this.running = false;
+      if (this.raf) cancelAnimationFrame(this.raf);
+    }
+  }
+
+  // --- 初期化処理（インスタンス生成と登録） ---
+  function initAnimationSystem() {
+    if (!window._animLayers) window._animLayers = [];
+    if (!window._hexManager) window._hexManager = new HexOutlineManager();
+    if (!window._dotManager) window._dotManager = new DotManager();
+
+    // レイヤ配列（拡張性：新しいアニメを追加したら register すればスケジューラで選べる）
+    window._animLayers = [window._hexManager, window._dotManager];
+
+    // スケジューラ生成（singleton）
+    if (!window._animScheduler) {
+      window._animScheduler = new AnimationScheduler();
+      // 登録はレイヤをそのまま
+      for (const l of window._animLayers) {
+        window._animScheduler.register(l);
+      }
+    }
+  }
+
+  // --- DOM 初期化 ---
   document.addEventListener('DOMContentLoaded', function () {
     loadTheme();
     splitContentToSections();
@@ -368,7 +595,7 @@
     window.toggleTheme = toggleTheme;
     window.loadTheme = loadTheme;
     window.initAnimationSystem = initAnimationSystem;
-    // 自動開始（停止する場合は window._hexManager.destroy() を呼ぶ）
+    // 自動開始
     initAnimationSystem();
   });
 
