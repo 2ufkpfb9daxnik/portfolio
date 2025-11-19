@@ -1,13 +1,48 @@
-// 統合スクリプト：テーマ / TOC・セクション分割 / 背景アニメーション
+// ...existing code...
 (function () {
-  // --- ユーティリティ ---
+  // === グローバル設定（ここだけ触れば各アニメの主要パラメータを変更できます） ===
+  // すべてのコメントは日本語です。各アニメクラスの先頭にもクラス固有の設定ブロックを置いてありますが、
+  // 基本はこの ANIM_CONFIG を編集すれば統一的に調整できます。
+  const ANIM_CONFIG = {
+    // 全体の速度倍率（移動/回転/スケール速度に掛かります）
+    speedMultiplier: 1.0,
+
+    // --- 六角形アニメ固有設定 ---
+    hex: {
+      // 初回に生成する個数の範囲（起動時にランダムで生成し、その後増減しません）
+      initialCountRange: [12, 24],
+
+      // 角速度の範囲（ここを変えれば全インスタンスに反映されます）
+      rotSpeedMin: -0.06,
+      rotSpeedMax: 3,
+
+      // 位置速度の範囲（vx, vy）。実際は speedMultiplier を掛けて決定されます。
+      vxRange: [-0.6, 100],
+      vyRange: [-0.6, 100],
+
+      // スケール成長速度（範囲）。speedMultiplier を掛けて決定されます。
+      scaleVelRange: [-0.06, 1],
+
+      // 初期サイズの範囲（px）
+      sizeRange: [12, 120],
+
+      // 目標スケール（ここを超えても縮小はさせません／バウンス無し）
+      targetScale: 1.0,
+
+      // 最大保持個数（安全装置。initialCountRange を超えないように）
+      maxShapes: 220
+    }
+  };
+
+  // --- ユーティリティ（日本語コメント） ---
   function rand(a, b) { return a + Math.random() * (b - a); }
+  function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function slugify(text) {
     return text.toLowerCase().replace(/[\s\/\\]+/g, '-').replace(/[^a-z0-9\-]/g, '').replace(/\-+/g, '-').replace(/^\-|\-$/g, '');
   }
 
-  // --- テーマ処理 ---
+  // --- テーマ切替（既存互換） ---
   function toggleTheme() {
     const body = document.body;
     const isDark = body.classList.contains('theme-dark');
@@ -20,6 +55,9 @@
     }
     const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
     document.cookie = 'theme=' + currentTheme + '; path=/; max-age=31536000';
+    if (window._hexManager && typeof window._hexManager.onThemeChange === 'function') {
+      try { window._hexManager.onThemeChange(); } catch (e) { /* ignore */ }
+    }
   }
 
   function loadTheme() {
@@ -33,50 +71,39 @@
     document.body.classList.add('theme-' + theme);
   }
 
-  // --- コンテンツをセクション化（h2/h3 を境に .container-section を作る） ---
+  // --- DOM 補助（既存機能） ---
   function splitContentToSections() {
     const wrapper = document.getElementById('content-wrapper');
     if (!wrapper) return;
-    // 既に分割済みなら何もしない
     if (wrapper.querySelector('.container-section')) return;
-
     const nodes = Array.from(wrapper.childNodes);
     const container = document.createDocumentFragment();
     let section = null;
-
     function startNewSection(withHeadingNode) {
       section = document.createElement('section');
       section.className = 'container-section';
       if (withHeadingNode) section.appendChild(withHeadingNode);
       container.appendChild(section);
     }
-
     for (const node of nodes) {
       if (node.nodeType === Node.ELEMENT_NODE && /^H[23]$/.test(node.tagName)) {
-        // 新しいセクション開始（h2/h3 は見出しとして先頭に入れる）
         startNewSection(node.cloneNode(true));
       } else {
         if (!section) startNewSection();
         section.appendChild(node.cloneNode(true));
       }
     }
-
-    // 置換
     wrapper.innerHTML = '';
     wrapper.appendChild(container);
   }
 
-  // --- TOC を生成（nav .toc が空なら content-wrapper の見出しから作る） ---
   function buildTocFromHeadings() {
     const tocEl = document.querySelector('.toc');
     const wrapper = document.getElementById('content-wrapper');
     if (!tocEl || !wrapper) return;
-    // pandoc が挿入した $toc$ があればそれを尊重する
     if (tocEl.querySelector('ul') && tocEl.querySelector('ul').children.length > 0) return;
-
     const headings = wrapper.querySelectorAll('h2, h3');
     if (headings.length === 0) return;
-
     const ul = document.createElement('ul');
     ul.style.listStyle = 'none';
     ul.style.padding = '0';
@@ -84,7 +111,6 @@
       let id = h.id;
       if (!id) {
         id = slugify(h.textContent || 'section');
-        // 衝突回避
         let attempt = 1;
         let base = id;
         while (document.getElementById(id)) { id = base + '-' + (attempt++); }
@@ -99,267 +125,250 @@
       li.appendChild(a);
       ul.appendChild(li);
     });
-
     tocEl.innerHTML = '';
     tocEl.appendChild(ul);
   }
 
-  // --- 背景アニメーション（モジュール群 + 管理器） ---
-  const Modules = {
-    FlashParticles: {
-      init(ctx, w, h) {
-        this.w = w; this.h = h;
-        this.p = Array.from({ length: Math.max(30, Math.floor(w / 30)) }, () => ({
-          x: Math.random() * w, y: Math.random() * h,
-          vx: rand(-6, 6), vy: rand(-6, 6),
-          r: rand(1.5, 6), hue: rand(60, 160)
-        }));
-      },
-      update(dt) {
-        for (const p of this.p) {
-          p.x += p.vx * dt * 0.06; p.y += p.vy * dt * 0.06;
-          if (p.x < -50) p.x = this.w + 50;
-          if (p.x > this.w + 50) p.x = -50;
-          if (p.y < -50) p.y = this.h + 50;
-          if (p.y > this.h + 50) p.y = -50;
-          p.hue = (p.hue + 0.3 * dt * 0.06) % 360;
-        }
-      },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        for (const p of this.p) {
-          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 6);
-          g.addColorStop(0, `hsla(${p.hue} 70% 60% / 0.28)`);
-          g.addColorStop(1, `hsla(${p.hue} 70% 50% / 0)`);
-          ctx.fillStyle = g;
-          ctx.beginPath(); ctx.arc(p.x, p.y, p.r * 4, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-      }
-    },
-
-    RapidRipples: {
-      init(ctx, w, h) { this.w = w; this.h = h; this.ripples = []; this.t = 0; },
-      update(dt) {
-        this.t += dt;
-        if (Math.random() < 0.45) {
-          this.ripples.push({ x: Math.random() * this.w, y: Math.random() * this.h, r: 0, a: 1, hue: rand(80, 200) });
-        }
-        this.ripples.forEach(r => { r.r += 40 * dt * 0.06; r.a -= 0.018 * dt * 0.06; });
-        this.ripples = this.ripples.filter(r => r.a > 0.02 && r.r < Math.max(this.w, this.h) * 1.5);
-      },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.lineWidth = 2;
-        for (const r of this.ripples) {
-          ctx.strokeStyle = `hsla(${r.hue} 60% 60% / ${r.a * 0.6})`;
-          ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-      }
-    },
-
-    SpinningPolygons: {
-      init(ctx, w, h) {
-        this.w = w; this.h = h; this.items = [];
-        const count = 8;
-        for (let i = 0; i < count; i++) {
-          this.items.push({
-            x: Math.random() * w, y: Math.random() * h,
-            size: rand(40, 160), sides: Math.floor(rand(3, 8)),
-            rot: Math.random() * Math.PI * 2, speed: rand(-0.05, 0.12),
-            hue: rand(40, 220)
-          });
-        }
-      },
-      update(dt) { for (const it of this.items) it.rot += it.speed * dt * 0.06; },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        for (const it of this.items) {
-          ctx.save();
-          ctx.translate(it.x, it.y); ctx.rotate(it.rot);
-          const s = it.size;
-          ctx.beginPath();
-          for (let i = 0; i < it.sides; i++) {
-            const a = (i / it.sides) * Math.PI * 2;
-            const x = Math.cos(a) * s, y = Math.sin(a) * s;
-            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-          }
-          ctx.closePath();
-          ctx.strokeStyle = `hsla(${it.hue} 60% 60% / 0.2)`;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          ctx.restore();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-      }
-    },
-
-    Scanlines: {
-      init(ctx, w, h) { this.w = w; this.h = h; this.offset = 0; this.angle = rand(-0.6, 0.6); this.speed = rand(6, 18); this.hue = rand(80, 160); },
-      update(dt) { this.offset += this.speed * dt * 0.06; },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.save();
-        ctx.translate(this.w/2, this.h/2); ctx.rotate(this.angle);
-        const step = 12;
-        for (let y = -this.h; y < this.h; y += step) {
-          const alpha = 0.06 + 0.12 * Math.abs(Math.sin((y + this.offset) * 0.05));
-          ctx.fillStyle = `hsla(${this.hue} 60% 50% / ${alpha})`;
-          ctx.fillRect(-this.w, y, this.w*2, step*0.6);
-        }
-        ctx.restore();
-        ctx.globalCompositeOperation = 'source-over';
-      }
-    },
-
-    FlowField: {
-      init(ctx, w, h) {
-        this.w = w; this.h = h; this.p = [];
-        const count = Math.max(60, Math.floor(w * h / 30000));
-        for (let i = 0; i < count; i++) this.p.push({ x: Math.random()*w, y: Math.random()*h, trail: [] , hue: rand(80,160)});
-        this.t = 0;
-      },
-      update(dt) {
-        this.t += dt * 0.004;
-        for (const k of this.p) {
-          const angle = Math.sin((k.x + this.t) * 0.0025) * Math.cos((k.y - this.t) * 0.0027) * Math.PI * 2;
-          k.x += Math.cos(angle) * 1.8 * dt * 0.06;
-          k.y += Math.sin(angle) * 1.8 * dt * 0.06;
-          k.trail.push({ x: k.x, y: k.y });
-          if (k.trail.length > 18) k.trail.shift();
-          if (k.x < 0) k.x = this.w;
-          if (k.x > this.w) k.x = 0;
-          if (k.y < 0) k.y = this.h;
-          if (k.y > this.h) k.y = 0;
-        }
-      },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        for (const k of this.p) {
-          for (let i = 1; i < k.trail.length; i++) {
-            const a = i / k.trail.length;
-            ctx.strokeStyle = `hsla(${k.hue} 70% 50% / ${0.08 * a})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(k.trail[i-1].x, k.trail[i-1].y);
-            ctx.lineTo(k.trail[i].x, k.trail[i].y);
-            ctx.stroke();
-          }
-        }
-        ctx.globalCompositeOperation = 'source-over';
-      }
-    },
-
-    GeoBurst: {
-      init(ctx, w, h) { this.w = w; this.h = h; this.puffs = []; this.spawnTimer = 0; },
-      update(dt) {
-        this.spawnTimer += dt;
-        if (this.spawnTimer > 40) {
-          this.spawnTimer = 0;
-          for (let i=0;i<6;i++) this.puffs.push({
-            x: Math.random()*this.w, y: Math.random()*this.h,
-            dir: rand(0, Math.PI*2), speed: rand(2, 14), size: rand(6,36),
-            life: 1, hue: rand(40,200)
-          });
-        }
-        this.puffs.forEach(p => { p.x += Math.cos(p.dir)*p.speed*0.06*dt; p.y += Math.sin(p.dir)*p.speed*0.06*dt; p.life -= 0.02*dt*0.06; });
-        this.puffs = this.puffs.filter(p => p.life > 0);
-      },
-      draw(ctx) {
-        ctx.globalCompositeOperation = 'lighter';
-        for (const p of this.puffs) {
-          ctx.save();
-          ctx.translate(p.x, p.y);
-          ctx.rotate(p.dir + p.life * 5);
-          ctx.fillStyle = `hsla(${p.hue} 70% 55% / ${p.life * 0.6})`;
-          ctx.beginPath();
-          ctx.moveTo(0, -p.size);
-          ctx.lineTo(p.size * 0.6, p.size);
-          ctx.lineTo(-p.size * 0.6, p.size);
-          ctx.closePath();
-          ctx.fill();
-          ctx.restore();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-      }
+  // --- カラー補助（ベースカラー優先） ---
+  function parseRgb(str) {
+    if (!str) return null;
+    const m = str.match(/rgba?\(([^)]+)\)/);
+    if (m) {
+      const parts = m[1].split(',').map(p => parseFloat(p));
+      return { r: parts[0], g: parts[1], b: parts[2], a: parts[3] ?? 1 };
     }
-  };
-
-  // 背景管理本体
-  class BackgroundManager {
-    constructor() {
-      this.canvas = document.getElementById('background-canvas');
-      if (!this.canvas) {
-        this.canvas = document.createElement('canvas');
-        this.canvas.id = 'background-canvas';
-        Object.assign(this.canvas.style, { position: 'fixed', top: '0', left: '0', width: '100%', height: '100%', zIndex: '-1', pointerEvents: 'none' });
-        document.body.appendChild(this.canvas);
+    const mh = str.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (mh) {
+      let hex = mh[1];
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const r = parseInt(hex.slice(0,2),16);
+      const g = parseInt(hex.slice(2,4),16);
+      const b = parseInt(hex.slice(4,6),16);
+      return { r, g, b, a: 1 };
+    }
+    return null;
+  }
+  function rgbToHsl(r,g,b){
+    r/=255; g/=255; b/=255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h=0, s=0, l=(max+min)/2;
+    if(max!==min){
+      const d = max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h=(g-b)/d + (g<b?6:0); break;
+        case g: h=(b-r)/d + 2; break;
+        case b: h=(r-g)/d + 4; break;
       }
-      this.ctx = this.canvas.getContext('2d');
+      h/=6;
+    }
+    return { h: h*360, s: s*100, l: l*100 };
+  }
+
+  function getBaseGrayHSL() {
+    const body = document.body;
+    const cs = getComputedStyle(body).backgroundColor || '';
+    const rgb = parseRgb(cs);
+    let L = 95;
+    if (rgb) {
+      const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+      L = clamp(Math.round(hsl.l), 6, 94);
+    }
+    return { h: 0, s: 0, l: L };
+  }
+  function monoColor(alpha, deltaL=0) {
+    const g = getBaseGrayHSL();
+    let L = clamp(g.l + deltaL, 0, 100);
+    return `hsla(0 0% ${L}% / ${alpha})`;
+  }
+
+  function getBaseColorHSL() {
+    const doc = document.documentElement;
+    let v = getComputedStyle(doc).getPropertyValue('--base-color').trim();
+    if (!v) {
+      const el = document.querySelector('.home-link') || document.body;
+      v = getComputedStyle(el).color || '';
+    }
+    const rgb = parseRgb(v) || parseRgb(getComputedStyle(document.body).color) || { r: 120, g: 120, b: 120, a: 1 };
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    return { h: Math.round(hsl.h), s: Math.min(40, Math.round(hsl.s*0.6)), l: Math.round(hsl.l) };
+  }
+  function baseColorAlpha(alpha, deltaL = 0) {
+    const c = getBaseColorHSL();
+    const L = clamp(c.l + deltaL, 0, 100);
+    return `hsla(${c.h} ${c.s}% ${L}% / ${alpha})`;
+  }
+
+  // === 六角形アウトラインアニメクラス ===
+  // クラス冒頭に「このクラス固有の設定」を置いていますが、統一管理は上の ANIM_CONFIG.hex を使ってください。
+  class HexOutlineManager {
+    constructor() {
+      // --- クラス固有設定（ここは参照用。変更は ANIM_CONFIG.hex を編集してください） ---
+      this.cfg = ANIM_CONFIG.hex;
+      this.speedMul = ANIM_CONFIG.speedMultiplier;
+
+      // 既存キャンバスを削除（複数インスタンス防止）
+      const old = document.getElementById('background-canvas');
+      if (old && old.parentNode) old.parentNode.removeChild(old);
+
+      // キャンバス作成
+      this.canvas = document.createElement('canvas');
+      this.canvas.id = 'background-canvas';
+      Object.assign(this.canvas.style, {
+        position: 'fixed', left: '0', top: '0', width: '100%', height: '100%',
+        zIndex: '-1', pointerEvents: 'none'
+      });
+      document.body.appendChild(this.canvas);
+
+      this.ctx = this.canvas.getContext('2d', { alpha: true });
       this.dpr = window.devicePixelRatio || 1;
+      this.shapes = [];
+      this.time = performance.now();
+
       this.resize();
       window.addEventListener('resize', () => this.resize());
-      this.moduleNames = Object.keys(Modules);
-      this.current = null;
-      this.currentName = null;
-      this.switchInterval = rand(400, 1200);
-      this.lastSwitch = performance.now();
-      this.time = performance.now();
-      this.startLoop();
+
+      // 初期個数を生成して以降は増減させない
+      this.spawnInitialShapes();
+
+      this.loop();
     }
+
+    // テーマ変更時（ライトモード時に body 背景を設定）
+    onThemeChange() {
+      if (!document.body.classList.contains('theme-dark')) {
+        const baseGray = getBaseGrayHSL();
+        document.body.style.background = `hsl(0 0% ${baseGray.l}% )`;
+      } else {
+        document.body.style.background = '';
+      }
+    }
+
+    // リサイズ処理
     resize() {
       const w = window.innerWidth, h = window.innerHeight;
       this.canvas.width = Math.max(1, Math.floor(w * this.dpr));
       this.canvas.height = Math.max(1, Math.floor(h * this.dpr));
-      this.canvas.style.width = w + 'px'; this.canvas.style.height = h + 'px';
+      this.canvas.style.width = w + 'px';
+      this.canvas.style.height = h + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
       this.w = w; this.h = h;
-      if (this.current && this.current.init) this.current.init(this.ctx, this.w, this.h);
     }
-    pickNext() {
-      let name = this.moduleNames[Math.floor(Math.random() * this.moduleNames.length)];
-      if (name === this.currentName && Math.random() < 0.6) {
-        const others = this.moduleNames.filter(n => n !== name);
-        name = others[Math.floor(Math.random() * others.length)];
+
+    // 初期にランダム個数だけ生成（その後は増減無し）
+    spawnInitialShapes() {
+      const n = randInt(this.cfg.initialCountRange[0], this.cfg.initialCountRange[1]);
+      for (let i = 0; i < n && this.shapes.length < this.cfg.maxShapes; i++) {
+        this.shapes.push(this.createShape());
       }
-      this.currentName = name;
-      this.current = Object.create(Modules[name]);
-      if (this.current.init) this.current.init(this.ctx, this.w, this.h);
-      this.switchInterval = rand(360, 1200);
-      this.lastSwitch = performance.now();
     }
-    loop(now) {
+
+    // 形の生成（rotSpeedはANIM_CONFIGで一元管理）
+    createShape() {
+      const size = rand(this.cfg.sizeRange[0], this.cfg.sizeRange[1]);
+      const x = rand(size, this.w - size);
+      const y = rand(size, this.h - size);
+      const angle = rand(0, Math.PI * 2);
+      const rotSpeed = rand(this.cfg.rotSpeedMin, this.cfg.rotSpeedMax) * this.speedMul;
+      const vx = rand(this.cfg.vxRange[0], this.cfg.vxRange[1]) * this.speedMul;
+      const vy = rand(this.cfg.vyRange[0], this.cfg.vyRange[1]) * this.speedMul;
+      const scaleVel = rand(this.cfg.scaleVelRange[0], this.cfg.scaleVelRange[1]) * this.speedMul;
+
+      return {
+        x, y, size, angle, rotSpeed, vx, vy,
+        scale: 0.01,
+        scaleVel,
+        state: 'opening',
+        created: performance.now(),
+        alpha: 0.28 * (0.7 + Math.random() * 0.6)
+      };
+    }
+
+    // 更新：バウンスは無し。回転・移動・拡大のみ。個数は変化しない。
+    update(dt) {
+      for (let i = 0; i < this.shapes.length; i++) {
+        const s = this.shapes[i];
+
+        // 回転（角速度は ANIM_CONFIG.hex で一元管理）
+        s.angle += s.rotSpeed * dt * 0.001;
+
+        // 移動（そのまま画面外へ出ても問題なし）
+        s.x += s.vx * dt * 0.001;
+        s.y += s.vy * dt * 0.001;
+
+        // スケール成長（目標に達しても縮小させない）
+        s.scale += s.scaleVel * dt * 0.001;
+        if (s.scale < 0.01) s.scale = 0.01; // 最低保証
+        // 必要なら最大スケールを設定する場合は ANIM_CONFIG.hex.targetScale を参照して clamp 可
+        if (typeof this.cfg.targetScale === 'number') {
+          // ここでは targetScale は「目標」で、超えても止めたければコメントを外す
+          // s.scale = Math.min(s.scale, this.cfg.targetScale);
+        }
+      }
+    }
+
+    // 六角形パスを描画するヘルパー
+    drawHexPath(ctx, cx, cy, r, angle) {
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = angle + i * Math.PI * 2 / 6;
+        const px = cx + Math.cos(a) * r;
+        const py = cy + Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    // 描画：枠のみ（内側描画は行わない）
+    draw() {
+      this.ctx.clearRect(0, 0, this.w, this.h);
+
+      for (const s of this.shapes) {
+        const alpha = Math.max(0.05, Math.min(0.95, s.alpha || 0.6));
+        this.ctx.save();
+        this.ctx.translate(s.x, s.y);
+        this.ctx.rotate(s.angle);
+        const r = s.size * 0.9 * (s.scale || 1);
+        this.ctx.lineWidth = Math.max(1, 2.2 * (s.scale || 1));
+        this.ctx.strokeStyle = baseColorAlpha(alpha, -6); // ベースカラー優先
+        this.drawHexPath(this.ctx, 0, 0, r, 0);
+        this.ctx.stroke();
+        this.ctx.restore();
+      }
+    }
+
+    // メインループ
+    loop() {
+      const now = performance.now();
       const dt = now - this.time;
       this.time = now;
-      if (!this.current) this.pickNext();
-      if (now - this.lastSwitch > this.switchInterval) this.pickNext();
-      this.ctx.fillStyle = 'rgba(0,0,0,0.04)';
-      this.ctx.fillRect(0, 0, this.w, this.h);
-      if (this.current.update) this.current.update(dt);
-      if (this.current.draw) this.current.draw(this.ctx);
-      requestAnimationFrame((t) => this.loop(t));
+      this.update(dt);
+      this.draw();
+      this.raf = requestAnimationFrame(() => this.loop());
     }
-    startLoop() { this.time = performance.now(); requestAnimationFrame((t) => this.loop(t)); }
+
+    // 破棄処理
+    destroy() {
+      if (this.raf) cancelAnimationFrame(this.raf);
+      const c = document.getElementById('background-canvas');
+      if (c && c.parentNode) c.parentNode.removeChild(c);
+    }
   }
 
+  // 初期化処理
   function initAnimationSystem() {
-    if (!window._bgManager) window._bgManager = new BackgroundManager();
+    if (!window._hexManager) window._hexManager = new HexOutlineManager();
   }
 
-  // --- DOM 初期化 ---
+  // DOM 初期化
   document.addEventListener('DOMContentLoaded', function () {
     loadTheme();
-    // セクション分割と TOC を優先して行う（CSS 用の構造を整える）
     splitContentToSections();
     buildTocFromHeadings();
-
-    // グローバル互換関数を設定
     window.toggleTheme = toggleTheme;
     window.loadTheme = loadTheme;
     window.initAnimationSystem = initAnimationSystem;
-
-    // 背景アニメーション開始
+    // 自動開始（停止する場合は window._hexManager.destroy() を呼ぶ）
     initAnimationSystem();
   });
 
