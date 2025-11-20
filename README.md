@@ -2,8 +2,8 @@
 
 pagesに(ファイル名)/index.mdを書いて、
 
-```pwsh
-.\pandoc.ps1 pages\(ファイル名)
+```python
+.\pandoc.py pages\(ファイル名)
 ```
 
 を実行
@@ -12,6 +12,6 @@ pagesに(ファイル名)/index.mdを書いて、
 
 [Pandoc - Installing pandoc](https://pandoc.org/installing.html)
 
-## TODO
+## ?
 
-(p5.jsで)動く背景にする
+gifとかでさらに動く背景にしても良い
