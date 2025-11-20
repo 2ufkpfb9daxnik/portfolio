@@ -238,7 +238,7 @@ def main():
     html_content = html_content.replace("$body$", body_html)
     html_content = html_content.replace("$toc$", "")
 
-    home_path = "../../index.html" if page_path.parts[0] == "pages" else "../index.html"
+    home_path = "../../index.html"
     html_content = re.sub(r'href\s*=\s*"(?:\.\.\/)*index\.html"', f'href="{home_path}"', html_content, flags=re.IGNORECASE)
     html_content = re.sub(r'href\s*=\s*"\s*index\.html\s*"', f'href="{home_path}"', html_content, flags=re.IGNORECASE)
 
