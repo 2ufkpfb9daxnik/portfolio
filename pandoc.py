@@ -162,7 +162,12 @@ def update_root_index(page_path, title):
     if not root_index.exists():
         return
     content = root_index.read_text(encoding="utf-8")
-    relative = page_path.as_posix()
+    # page_path は main() 側で resolve() されている可能性があるため、
+    # ROOT からの相対パスを使う。失敗したら元のパス文字列を使う。
+    try:
+        relative = page_path.relative_to(ROOT).as_posix()
+    except Exception:
+        relative = page_path.as_posix()
     if not relative.startswith("pages/"):
         relative = f"pages/{relative}"
     if f'href="{relative}/"' in content:
