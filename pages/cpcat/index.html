@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>競技プログラミングの問題のカテゴリー+α</title>
+  <link rel="stylesheet" href="stylesheet.css" />
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc"></div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+
+      <div id="content-wrapper"><p>作成: 2025-11-23 14:52</p>
+<p>つい最近の<a href="https://www.youtube.com/watch?v=alaB9VLvFdQ">岩井星人の配信</a>で<a href="https://atcoder-tags.herokuapp.com/tags/Searching">atcoder tags</a>というのをngtkanaさんが紹介してくれていて、こういうのは一覧にまとめたくなりがち</p>
+<p>知らないとかあんまり合わないという感じのは除く</p>
+<h2>探索</h2>
+<ul>
+  <li>全探索</li>
+  <li>二分探索</li>
+  <li>三分探索(高難易度でしか見ない)</li>
+  <li>深さ優先探索</li>
+  <li>幅優先探索</li>
+  <li>bit全探索</li>
+</ul>
+<h2>貪欲法</h2>
+<h2>文字列アルゴリズム</h2>
+<ul>
+  <li>ローリングハッシュ</li>
+  <li>manacher</li>
+  <li>suffix-array</li>
+  <li>z-algorithm</li>
+  <li>trie</li>
+  <li>構文解析</li>
+</ul>
+<h2>数学</h2>
+<ul>
+  <li>整数</li>
+  <li>組み合わせ</li>
+  <li>数え上げ</li>
+  <li>確率</li>
+  <li>期待値</li>
+  <li>行列</li>
+  <li>xor</li>
+</ul>
+<h2>テクニック</h2>
+<ul>
+  <li>ソート</li>
+  <li>シミュレーション</li>
+  <li>累積和</li>
+  <li>imos法</li>
+  <li>しゃくとり法</li>
+  <li>再帰関数</li>
+  <li>座標圧縮</li>
+  <li>半分全列挙</li>
+  <li>平方分割</li>
+  <li>分割統治</li>
+  <li>ダブリング</li>
+  <li>乱択アルゴリズム</li>
+</ul>
+<h2>構築</h2>
+<h2>グラフ</h2>
+<ul>
+  <li>最短経路</li>
+  <li>最小全域木</li>
+  <li>最小共通祖先</li>
+  <li>強連結成分分解</li>
+  <li>トポロジカルソート</li>
+  <li>オイラーツアー</li>
+  <li>オイラーパス・ハミルトンパス</li>
+  <li>HL分解</li>
+  <li>重心分解</li>
+  <li>木の同型判定</li>
+  <li>行列木定理</li>
+  <li>二重連結成分分解</li>
+  <li>二重頂点連結成分分解</li>
+  <li>サイクル基底</li>
+  <li>dfs木</li>
+  <li>エルデシュガライの定理(これたまたま見てみたら該当問題がなかった)</li>
+</ul>
+<h2>動的計画法</h2>
+<ul>
+  <li>基礎dp</li>
+  <li>戻すdp</li>
+  <li>文字列dp</li>
+  <li>区間dp</li>
+  <li>桁dp</li>
+  <li>木dp</li>
+  <li>全方位木dp</li>
+  <li>bitdp</li>
+  <li>確率dp</li>
+  <li>期待値dp</li>
+  <li>挿入dp</li>
+  <li>連結dp</li>
+  <li>インラインdp</li>
+  <li>行列累乗</li>
+  <li>convex-hull-trick</li>
+  <li>monge-dp</li>
+  <li>alien-dp</li>
+  <li>きたまさ法</li>
+  <li>(一応 viterbi)</li>
+</ul>
+<h2>データ構造</h2>
+<ul>
+  <li>スタック</li>
+  <li>キュー</li>
+  <li>set</li>
+  <li>辞書、map、hash</li>
+  <li>deque</li>
+  <li>multiset</li>
+  <li>優先度付きキュー</li>
+  <li>union-find</li>
+  <li>binary-indexed-tree</li>
+  <li>segment-tree</li>
+  <li>lazy-segment-tree</li>
+  <li>sparse-table</li>
+  <li>wavelet行列</li>
+  <li>永続データ構造</li>
+  <li>平衡二分探索木</li>
+</ul>
+<h2>ゲーム</h2>
+<ul>
+  <li>nim</li>
+  <li>grundy数</li>
+  <li>後退解析</li>
+  <li>minimax法、alphabeta法、negascout</li>
+</ul>
+<h2>フロー</h2>
+<ul>
+  <li>最大流</li>
+  <li>最小費用流</li>
+  <li>二部マッチング</li>
+  <li>最小カット</li>
+  <li>燃やす埋める</li>
+</ul>
+<h2>幾何学</h2>
+<ul>
+  <li>凸包</li>
+  <li>偏角ソート</li>
+  <li>ボロノイ図</li>
+  <li>3次元</li>
+  <li>ドロネー三角形分割</li>
+</ul>
+<h2>マラソン</h2>
+<ul>
+  <li>山登り法</li>
+  <li>焼きなまし法</li>
+  <li>ビームサーチ</li>
+</ul>
+<h2>+αの部分</h2>
+<ul>
+  <li>形式的冪級数</li>
+  <li>畳み込み</li>
+</ul>
+<p><a href="https://zenn.dev/baroqueengine/books/a19140f2d9fc1a">こういうのも加えておきたい</a>ですよね、やっぱり競技プログラミングが全てではないというのはそうなので</p>
+<p>他にも例えば</p>
+<ul>
+  <li>ニューラルネットワーク</li>
+  <li>誤差逆伝播法</li>
+  <li>メルセンヌ・ツイスター</li>
+  <li>パーリンノイズ</li>
+  <li>有限要素法</li>
+  <li>最小二乗法</li>
+  <li>skip list</li>
+  <li>pagerank</li>
+</ul>
+<p>なんかもありますね 下からのメディア系とかどんどん応用になっていくと結局(上に記載した)これじゃん!となるかもしれませんが一応書く もとから怪しいですがさらにどんどん怪しいうわべだけの知識になっていくので信用度なしになります</p>
+<h2>圧縮・符号化</h2>
+<ul>
+  <li>jpeg</li>
+  <li>png</li>
+  <li>zstandard</li>
+  <li>ハフマン符号</li>
+  <li>ブロック分割(macroblocks / ctu)</li>
+  <li>離散コサイン変換</li>
+  <li>motion estimationにおけるdiamond search, hexagon search</li>
+  <li>cabac / cavlc</li>
+  <li>reed-solomon</li>
+</ul>
+<h2>メディア処理系</h2>
+<p>私の興味によるところが明らかに大きいが、画像とか</p>
+<ul>
+  <li>モザイク</li>
+  <li>ブラー</li>
+  <li>ライフゲーム</li>
+</ul>
+<h3>フィルタ系</h3>
+<ul>
+  <li>畳み込み</li>
+  <li>ガウシアンフィルタ</li>
+  <li>ボックスフィルタ</li>
+  <li>メディアンフィルタ</li>
+  <li>バイラテラルフィルタ</li>
+  <li>ソーベルフィルタ</li>
+  <li>ラプラシアンフィルタ</li>
+  <li>ガボールフィルタ</li>
+  <li>(これまでのものと明らかに違うが、)カルマンフィルタ</li>
+</ul>
+<h3>ノイズ除去</h3>
+<ul>
+  <li>wienerフィルタ</li>
+  <li>bm3d</li>
+</ul>
+<h3>画像特徴量・特徴抽出</h3>
+<ul>
+  <li>fast</li>
+  <li>sift</li>
+  <li>surf</li>
+  <li>orb</li>
+  <li>hog</li>
+</ul>
+<h3>セグメンテーション</h3>
+<ul>
+  <li>大津の2値化</li>
+  <li>watershed</li>
+  <li>k-means</li>
+</ul>
+<h3>幾何変換・射影</h3>
+<ul>
+  <li>アフィン変換</li>
+  <li>射影変換</li>
+  <li>homography推定</li>
+</ul>
+<h3>3D系</h3>
+<ul>
+  <li>kd-tree</li>
+  <li>octree</li>
+  <li>r-tree(空間インデックス)</li>
+  <li>interactive closet point</li>
+  <li>marching cubes</li>
+  <li>poisson surface reconstruction</li>
+  <li>catmull-clark subdivision</li>
+  <li>loop subdivision</li>
+  <li>mesh simplification</li>
+</ul>
+<h3>カメラ・投影</h3>
+<ul>
+  <li>pinhole camela model</li>
+  <li>zhang&#x27;s method</li>
+  <li>triangulation</li>
+  <li>bundle adjustment</li>
+  <li>structure from motion</li>
+</ul>
+<h3>レンダリング</h3>
+<ul>
+  <li>レイトレーシング(whitted-style)</li>
+  <li>パストレーシング(モンテカルロ)</li>
+  <li>photon mapping</li>
+  <li>radiosity</li>
+  <li>brdfモデル(lambert, phong, cook-torrance, ggx)</li>
+  <li>importace sampling</li>
+  <li>shadow mapping</li>
+  <li>shadow volumes</li>
+  <li>ssao / hbao+ / gtao</li>
+  <li>pbr</li>
+</ul>
+<h3>GPU/リアルタイム</h3>
+<ul>
+  <li>rastarization(z-buffer)</li>
+  <li>tessellation shaders</li>
+  <li>compute shades</li>
+  <li>並列prefix-sum, sort</li>
+  <li>deffered rendering</li>
+  <li>forward+ / culstered shading</li>
+</ul>
+<h3>動画処理、時系列解析</h3>
+<ul>
+  <li>フレーム間差分</li>
+  <li>optical flow</li>
+  <li>背景差分</li>
+  <li>temporal filtering</li>
+</ul>
+<h3>オーディオ処理</h3>
+<ul>
+  <li>フーリエ変換、短時間フーリエ変換</li>
+  <li>メル周波数ケプストラム係数</li>
+  <li>線形予測</li>
+  <li>音の立ち上がり検出(onset detection)</li>
+  <li>wienerフィルタ</li>
+</ul>
+<h3>古典的な人工知能など</h3>
+<ul>
+  <li>viola-jones</li>
+  <li>サポートベクトル機械</li>
+</ul>
+<h3>深層学習</h3>
+<ul>
+  <li>cnn</li>
+  <li>u-net, segnet</li>
+  <li>yolo</li>
+  <li>vision transformer</li>
+  <li>depth estimation models</li>
+  <li>neural radiance fields</li>
+  <li>transformer</li>
+  <li>word2vec</li>
+</ul>
+<h3>色空間、画像統計</h3>
+<ul>
+  <li>histgoram equalization</li>
+  <li>局所ヒストグラム平坦化</li>
+  <li>pca(次元削減)</li>
+  <li>white balance</li>
+  <li>gamma correction</li>
+  <li>tone mapping(hdr)</li>
+</ul>
+<h3>線形代数</h3>
+<ul>
+  <li>lu分解</li>
+  <li>qr分解</li>
+  <li>svd</li>
+  <li>共役勾配</li>
+</ul>
+<h3>暗号</h3>
+<ul>
+  <li>diffie-helman</li>
+  <li>sha-3</li>
+  <li>rsa-oaep</li>
+  <li>tlsハンドシェイク</li>
+</ul>
+<p>最終更新: 2025-11-23 15:54</p></div>
+
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <!-- 統合スクリプトを外部から読み込む -->
+  <script src="script.js"></script>
+</body>
+</html>
