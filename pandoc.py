@@ -71,7 +71,7 @@ def convert_markdown_to_html(markdown):
     table_has_delim = False
 
     def flush_list():
-        if list_stack:
+        while list_stack:
             html.append(f"</{list_stack.pop()}>")
 
     def flush_table():
@@ -94,9 +94,14 @@ def convert_markdown_to_html(markdown):
         table_buffer = []
         table_has_delim = False
 
-    for raw in lines:
+    i = 0
+    while i < len(lines):
+        raw = lines[i]
         line = raw.rstrip()
-        if re.match(r'^\s*```(\w*)', line):
+
+        # Fenced code block toggles
+        m_code = re.match(r'^\s*```(\w*)', line)
+        if m_code:
             if in_code:
                 content = "\n".join(code_lines)
                 lang_attr = f' class="{code_lang}"' if code_lang else ""
@@ -106,15 +111,23 @@ def convert_markdown_to_html(markdown):
                 code_lang = ""
             else:
                 in_code = True
-                code_lang = re.match(r'^\s*```(\w*)', line).group(1) or ""
+                code_lang = m_code.group(1) or ""
+            i += 1
             continue
+
         if in_code:
             code_lines.append(raw)
+            i += 1
             continue
+
+        # Blank line: close lists/tables
         if not line.strip():
             flush_list()
             flush_table()
+            i += 1
             continue
+
+        # Table row (starts with '|')
         if re.match(r'^\s*\|', raw):
             trimmed = raw.strip()
             trimmed = re.sub(r'^\|', '', trimmed)
@@ -124,35 +137,59 @@ def convert_markdown_to_html(markdown):
             if is_delim:
                 if table_buffer:
                     table_has_delim = True
+                i += 1
                 continue
             table_buffer.append(cells)
+            i += 1
             continue
+
+        # Non-table line: flush pending table
         flush_table()
+
+        # Heading
         heading = re.match(r'^(#{1,6})\s*(.+)$', line)
         if heading:
             flush_list()
             level = len(heading.group(1))
             html.append(f"<h{level}>{escape(heading.group(2))}</h{level}>")
+            i += 1
             continue
-        blockquote = re.match(r'^\s*>\s*(.+)$', line)
-        if blockquote:
+
+        # Blockquote: collect contiguous '>' lines and recurse to parse inner markdown
+        if re.match(r'^\s*>', line):
             flush_list()
-            html.append(f"<blockquote>{apply_markdown_inlines(blockquote.group(1))}</blockquote>")
+            j = i
+            inner_lines = []
+            while j < len(lines) and re.match(r'^\s*>', lines[j]):
+                inner_lines.append(re.sub(r'^\s*>\s?', '', lines[j]))
+                j += 1
+            inner_md = "\n".join(inner_lines).strip()
+            inner_html = convert_markdown_to_html(inner_md) if inner_md else ""
+            html.append(f"<blockquote>{inner_html}</blockquote>")
+            i = j
             continue
+
+        # Unordered list (single-level)
         list_match = re.match(r'^\s*([-*+])\s+(.+)$', line)
         if list_match:
             if not list_stack:
                 list_stack.append("ul")
                 html.append("<ul>")
             html.append(f"  <li>{apply_markdown_inlines(list_match.group(2))}</li>")
+            i += 1
             continue
+
+        # Paragraph / inline content
         flush_list()
         html.append(f"<p>{apply_markdown_inlines(line)}</p>")
+        i += 1
 
+    # If still in code at EOF, flush it
     if in_code:
         content = "\n".join(code_lines)
         lang_attr = f' class="{code_lang}"' if code_lang else ""
         html.append(f'<pre><code{lang_attr}>{escape(content)}</code></pre>')
+
     flush_list()
     flush_table()
     return "\n".join(html)
