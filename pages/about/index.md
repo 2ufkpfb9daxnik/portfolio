@@ -4,7 +4,7 @@ title: "紹介"
 
 高専4年 情報科
 
-広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)競技プログラミングもしています。ゲームも好きです。今はゼンレスゾーンゼロと崩壊スターレイルとGregtech CEu modernを遊んでいます。
+広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)[2025は優勝しました。](https://www.youtube.com/watch?v=_sw6MZ5shTo&t=2097s)競技プログラミングもしています。ゲームも好きです。今はゼンレスゾーンゼロと崩壊スターレイルとGregtech CEu modernを遊んでいます。
 
 各種リンク
 

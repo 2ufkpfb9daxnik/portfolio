@@ -1538,3 +1538,161 @@
   });
 
 })();
+
+/* --- code block enhancement: titles, copy, line numbers, lineno start parsing --- */
+function parseCodeAttrs(codeEl) {
+  const attrs = {};
+  // data-* attributes from pandoc (if present)
+  if (codeEl.dataset) {
+    if (codeEl.dataset.title) attrs.title = codeEl.dataset.title;
+    if (codeEl.dataset.lineStart) attrs.lineStart = parseInt(codeEl.dataset.lineStart, 10);
+    if (codeEl.dataset.linenostart) attrs.lineStart = parseInt(codeEl.dataset.linenostart, 10);
+  }
+  // try to parse info string encoded in className (common variants)
+  const cls = (codeEl.className || '').trim();
+  // examples we try to support:
+  // class="language-js linenostart=5 title=Example"
+  // or "language-js:linenostart=5:title=Example"
+  if (cls) {
+    const parts = cls.split(/\s+/);
+    for (const p of parts) {
+      const m = p.match(/(?:linenostart|line-start|start)=(\d+)/i);
+      if (m) attrs.lineStart = parseInt(m[1], 10);
+      const mt = p.match(/title=(.+)/i);
+      if (mt) attrs.title = decodeURIComponent(mt[1].replace(/^["']|["']$/g, ''));
+    }
+    // colon-separated fallback
+    const colon = cls.split(':').slice(1).join(':');
+    if (colon) {
+      const kvs = colon.split(':');
+      for (const kv of kvs) {
+        const m = kv.match(/linenostart=(\d+)/i);
+        if (m) attrs.lineStart = parseInt(m[1], 10);
+        const mt = kv.match(/title=(.+)/i);
+        if (mt) attrs.title = decodeURIComponent(mt[1].replace(/^["']|["']$/g, ''));
+      }
+    }
+  }
+  return attrs;
+}
+
+function enhanceCodeBlocks() {
+  document.querySelectorAll('pre > code').forEach(code => {
+    const pre = code.parentNode;
+    if (!pre || pre.classList.contains('enhanced')) return;
+    pre.classList.add('enhanced');
+
+    const attrs = parseCodeAttrs(code);
+    const source = code.textContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = source.split('\n');
+    const start = Number.isFinite(attrs.lineStart) ? attrs.lineStart : 1;
+
+    // wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    // header (optional)
+    if (attrs.title || code.className) {
+      const header = document.createElement('div');
+      header.className = 'code-header';
+      const left = document.createElement('div');
+      left.className = 'code-title';
+      left.textContent = attrs.title || (code.className || '').split(/\s+/)[0] || '';
+      const right = document.createElement('div');
+      right.className = 'code-meta';
+      // copy button
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'code-copy';
+      copyBtn.type = 'button';
+      copyBtn.textContent = 'コピー';
+      copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(source);
+          copyBtn.textContent = 'コピー済';
+          setTimeout(() => copyBtn.textContent = 'コピー', 1500);
+        } catch (e) {
+          // fallback for older browsers
+          const ta = document.createElement('textarea');
+          ta.value = source;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          copyBtn.textContent = 'コピー済';
+          setTimeout(() => copyBtn.textContent = 'コピー', 1500);
+        }
+      });
+      right.appendChild(copyBtn);
+      header.appendChild(left);
+      header.appendChild(right);
+      wrapper.appendChild(header);
+    }
+
+    // code body: gutter + content
+    const body = document.createElement('div');
+    body.className = 'code-body';
+
+    const gutter = document.createElement('pre');
+    gutter.className = 'code-gutter';
+    gutter.setAttribute('aria-hidden', 'true');
+    const gutterLines = [];
+    for (let i = 0; i < lines.length; i++) {
+      gutterLines.push(String(start + i));
+    }
+    gutter.textContent = gutterLines.join('\n');
+
+    const content = document.createElement('pre');
+    content.className = 'code-content';
+    // keep original classes for syntax highlighting (if any)
+    const newCode = document.createElement('code');
+    newCode.className = code.className || '';
+    newCode.textContent = source;
+    content.appendChild(newCode);
+
+    body.appendChild(gutter);
+    body.appendChild(content);
+    wrapper.appendChild(body);
+
+    // replace original pre with wrapper
+    pre.parentNode.replaceChild(wrapper, pre);
+
+    // selection handling: hide gutter while user selects or when copying selection
+    function updateSelectionState() {
+      const sel = document.getSelection();
+      if (!sel || sel.isCollapsed) {
+        wrapper.classList.remove('selection-active');
+        return;
+      }
+      // if selection is inside wrapper -> hide gutter
+      const anchor = sel.anchorNode;
+      const focus = sel.focusNode;
+      if (wrapper.contains(anchor) && wrapper.contains(focus)) {
+        wrapper.classList.add('selection-active');
+      } else {
+        wrapper.classList.remove('selection-active');
+      }
+    }
+    document.addEventListener('selectionchange', updateSelectionState);
+
+    // keyboard copy (Ctrl/Cmd+C) inside wrapper: ensure copied text is code only
+    wrapper.addEventListener('copy', function (ev) {
+      const sel = document.getSelection();
+      if (!sel || sel.isCollapsed) return;
+      // if selection is inside this wrapper, override clipboard
+      if (wrapper.contains(sel.anchorNode) && wrapper.contains(sel.focusNode)) {
+        ev.preventDefault();
+        const selected = sel.toString();
+        // strip any numbered prefixes if user somehow selects rendered gutter+content text
+        const cleaned = selected.split('\n').map(l => l.replace(/^\s*\d+\s*/, '')).join('\n');
+        ev.clipboardData.setData('text/plain', cleaned);
+      }
+    });
+  });
+}
+
+// run after DOM ready (also integrate with existing init flow)
+document.addEventListener('DOMContentLoaded', function () {
+  try { enhanceCodeBlocks(); } catch (e) { /* ignore */ }
+});
+
+// expose for manual re-run if content is mutated
+window.enhanceCodeBlocks = enhanceCodeBlocks;
