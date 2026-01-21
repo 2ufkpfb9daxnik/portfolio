@@ -56,8 +56,8 @@ title: "紹介"
 
 - [プログラミングを初めて4ヶ月弱の頃に作成したプログラム](https://github.com/2ufkpfb9daxnik/assignments5/tree/main)
 - [プログラミングを始めて8ヶ月の頃に作成したプログラム](https://github.com/2ufkpfb9daxnik/PoCS)
-- [プログラミングを始めて9ヶ月の頃に作成したプログラム](/page/old/hsrtemporarydictionaryje)
-- [プログラミングを始めて10ヶ月の頃に作成したプログラム](/page/old/BreakingTheMaze)
+- [プログラミングを始めて9ヶ月の頃に作成したプログラム](/pages/hsrtemporarydictionaryje)
+- [プログラミングを始めて10ヶ月の頃に作成したプログラム](/pages/breakingthemaze)
 - [2023年の文化祭で出したタイピングゲーム(複数人で制作)](https://yyf999999999.github.io/typingprot/pages/difficultySelecter)
 - [2024年の文化祭で出したパズルゲームのweb板(複数人で制作)](https://yuga-school.github.io/puzzlegame/Roguelikepuzzle.html)
 - [高専3年の実験で作った報告書](https://qiita.com/cjjj1s/items/f1f9d5e25bd5ae8d1c7f)
