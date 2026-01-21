@@ -4,7 +4,7 @@ title: "紹介"
 
 高専4年 情報科
 
-広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)[2025は優勝しました。](https://www.youtube.com/watch?v=_sw6MZ5shTo&t=2097s)競技プログラミングもしています。ゲームも好きです。今はゼンレスゾーンゼロと崩壊スターレイルとGregtech CEu modernを遊んでいます。
+広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)[2025は優勝しました。](https://www.youtube.com/watch?v=_sw6MZ5shTo&t=2097s)競技プログラミングもしています。ゲームも好きです。今は崩壊スターレイル(マネーウォーズのみ)とGregtech CEu modernを遊んでいます。
 
 各種リンク
 
@@ -42,7 +42,14 @@ title: "紹介"
 
 ## やってみたい・やりたいこと
 
+副作用こそプログラミングのすべてであるというのもわかるし、そうではなくて型システムで静的解析できるものが全てであるというのもわかるので、その両取りができる言語及び機能に興味があります。
+
+- [koka](https://koka-lang.github.io/koka/doc/index.html) 代数的エフェクトで副作用を統一的に扱えるのに非常に魅力を感じています forが関数になっているとか、minimum but generalというのがshemeとかの本当に必要な言語機能だけを取り入れるという感じで良い メモリ確保をうまいことやっているperceusというのも面白そう
 - Rust
+
+日本語入力に興味があります。
+
+- [自作配列の使えるタイピングゲームの作成](https://github.com/2ufkpfb9daxnik/atw_g)
 - 計算で漢直作成
 
 ## 作ったもの・関わったもの
