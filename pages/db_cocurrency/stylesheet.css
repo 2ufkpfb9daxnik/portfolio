@@ -4,7 +4,7 @@
 }
 
 body.theme-tsuki {
-  background: var(--bg-color, #EEFFEE);
+  background: var(--bg-color, #DCEAD7);
   margin: 0;
   color: #222;
 }
@@ -299,4 +299,35 @@ table { display: block; width: 100%; overflow: auto; border-radius: 6px; }
   .code-gutter { background: rgba(255,255,255,0.02); color: rgba(255,255,255,0.5); border-right-color: rgba(255,255,255,0.03); }
   pre, code { color: #eaeaea; }
   pre { background: transparent; }
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+}
+table th, table td {
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 0.5em 0.6em;
+  text-align: left;
+  background: rgba(255,255,255,0.02);
+}
+table th { font-weight: bold; }
+pre, code {
+  font-family: Consolas, 'Courier New', monospace;
+  background: rgba(0,0,0,0.03);
+  color: inherit;
+}
+pre {
+  padding: 0.8em;
+  overflow: auto;
+  border-radius: 6px;
+  margin: 0.8em 0;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+code {
+  padding: 0.12em 0.25em;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.02);
+  font-size: 0.95em;
 }

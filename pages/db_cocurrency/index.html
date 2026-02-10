@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>$title$</title>
+  <title>関係データベースにおける同時実行制御</title>
   <link rel="stylesheet" href="stylesheet.css" />
 </head>
 <body class="theme-tsuki">
@@ -11,17 +11,24 @@
     <nav class="sidebar">
       <a class="home-link" href="../../index.html">home</a>
       <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
-      <div class="toc">$toc$</div>
+      <div class="toc"></div>
     </nav>
     <main class="main-content">
       <div class="home-top">
-        <a href="index.html">home</a>
+        <a href="../../index.html">home</a>
         <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
       </div>
 
-      <div id="content-wrapper">$body$</div>
+      <div id="content-wrapper"><p>作成: 2026-02-01 23:57</p>
+<p><a href="https://takeshiwada1980.github.io/DB-2025/lecture13.html">データベース工学という講義の課題2</a></p>
+<h2>概要</h2>
+<p>wikipediaから引用:</p>
+<p>    データベースへの読み書き（トランザクション処理）には処理時間が発生する。複数のトランザクション処理依頼がデータベース管理システムへ行われたとき、これらを処理する1つの方法は逐次的（Serial）に1つずつトランザクションを処理する方法である。トランザクション処理に処理時間がかかることから、後に行われた処理は先に行われた処理が完了するまでの間「待ち」の状態になってしまう。</p>
+<p>    待ちを最小化するためにはデータベース管理システムが複数のトランザクションを並行（Concurrent）に処理すればよい。しかしトランザクションは必ずしも安全に並列化できるとは限らない。そのためデータベース管理システムは各並行トランザクションが互いに影響を受けず分離された安全な範囲内でトランザクションを並行化する。あるいは、異常な振る舞い（anomalies）を起こしうる分離レベルが低い並行化を許容し、代わりに並行性を高めてトランザクション処理性能を上昇させる[1]。この安全性・一貫性と性能のトレードオフを生む、並行性トランザクションの分離具合がトランザクション分離レベルである[2]。</p>
+<p>    トランザクション分離レベルはシステム要件に合わせデータベースの設計者によって設定される。例えば一切の異常な振る舞いが許されない金融システムには高いトランザクション分離レベルが設定される（代わりに性能は低い）。またanomaliesの可能性がある分離レベルを選択してもanomaliesを起こしえないトランザクションのみを処理するように設計すれば一貫性を保ちながら高い性能を得ることが可能になる。</p>
+<p>最終更新: 2026-02-10 23:20</p></div>
 
-      <div class="home-bottom"><a href="index.html">home</a></div>
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
     </main>
   </div>
 
