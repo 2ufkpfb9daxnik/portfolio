@@ -35,8 +35,13 @@ const column = "age";
 // 実行時に構文エラーになるか、最悪の場合はSQLインジェクションを引き起こします
 const query = "SELECT * FROM users WHERE " + column + " > " + minAge;</code></pre>
 
-
 <p>コンパイラ（やランタイム）から見れば、これは単なる文字列のデータに過ぎません。そのため、カラム名（列名）の打ち間違いやSQLの文法エラーがあっても、実際にプログラムを動かしてデータベースへクエリが送信される瞬間まで、エラーに気づくことができません。また、プログラム側のデータ構造（オブジェクトなど）と、データベース側のデータ構造（表と行）の形が根本的に異なるため、その変換を手作業で行うのは非常に面倒でバグの温床になります。</p>
+
+<blockquote style="border-left: 4px solid #007bff; padding-left: 15px; margin: 20px 0; font-style: italic;">
+  <p>今でもやってるじゃないか、ねえ文字列で、連結すりゃあいいそんなことやってるからSQLインジェクションなどが起こって、そのほぼ大きな部分の脆弱性をこの世に生んでいるわけですねこれであれば、そんなものは、既にissueでさえない</p>
+  <footer style="margin-top: 10px; font-size: 0.9em;">— <cite><a href="https://www.youtube.com/watch?v=SgEV76ZoAYk&t=1969s" target="_blank">
+SML# の研究開発（先端プログラミング言語実現を目指す学術研究の可能性について）</a></cite></footer>
+</blockquote>
 
 <h3>構造化されたクエリと型安全性へのアプローチ</h3>
 
