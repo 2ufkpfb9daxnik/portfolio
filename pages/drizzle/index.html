@@ -19,13 +19,4199 @@
         <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
       </div>
 
-      <div id="content-wrapper"><p>作成: 2026-02-17 17:03</p>
+      <div id="content-wrapper">
+        <h1>Drizzle ORM</h1>
+        <p>作成: 2026-02-17 17:03</p>
 <p><a href="https://takeshiwada1980.github.io/DB-2025/lecture13.html">データベース工学という講義の課題2</a></p>
-<h2>概要</h2>
-<p>Drizzle ORMは、TypeScriptで書かれたモダンなORM（Object-Relational Mapping）ライブラリです。Drizzle ORMは、SQLクエリを直接記述することができるため、柔軟性とパフォーマンスを提供します。また、型安全なクエリビルダーを提供しており、開発者がデータベース操作をより簡単に行えるようにしています。</p>
-<p>ORMは、オブジェクト指向プログラミングとリレーショナルデータベースの間の橋渡しをするための技術です。 ORMを使用することで、開発者はデータベースのテーブルをクラスとして表現し、クエリをメソッドチェーンで記述することができます。これにより、コードの可読性が向上し、データベース操作がより直感的になります。</p>
-<p>最終更新: 2026-02-17 17:06</p></div>
+<h2>SQLコマンドを文字列として扱うことの限界</h2>
 
+<p>リレーショナルデータベースに対する操作は、多くの場合、アプリケーションプログラム内から動的にSQLを発行することで行われます。この際、従来の手法ではSQL文を単なる「文字列」としてプログラム内に記述し、変数を結合することでクエリ（データベースへの命令）を組み立てていました。</p>
+
+<p>しかし、文字列の結合によるクエリ構築には本質的な弱点があります。SQLのクエリは本来、SELECT句やWHERE句、JOINなどが階層的・論理的に組み合わさった「構造を持った言語」です。それを単なる1次元の文字の並びに落とし込んで結合・操作することは、クエリが持つ本来の構造を壊してしまうことになります。</p>
+
+<pre><code class="javascript">// 1次元の文字列結合による危険なクエリ構築の例
+const column = "age";
+// コンパイラ(やランタイム)はこれを単なる文字列としてしか認識しないため、
+// 実行時に構文エラーになるか、最悪の場合はSQLインジェクションを引き起こします
+const query = "SELECT * FROM users WHERE " + column + " > " + minAge;</code></pre>
+
+
+<p>コンパイラ（やランタイム）から見れば、これは単なる文字列のデータに過ぎません。そのため、カラム名（列名）の打ち間違いやSQLの文法エラーがあっても、実際にプログラムを動かしてデータベースへクエリが送信される瞬間まで、エラーに気づくことができません。また、プログラム側のデータ構造（オブジェクトなど）と、データベース側のデータ構造（表と行）の形が根本的に異なるため、その変換を手作業で行うのは非常に面倒でバグの温床になります。</p>
+
+<h3>構造化されたクエリと型安全性へのアプローチ</h3>
+
+<p>この「1次元の文字列の限界」と「データ構造のズレ」を解消するため、プログラミング言語やツールのレベルで様々な解決策が考案されてきました。</p>
+
+<ul>
+    <li><strong><a href="https://smlsharp.github.io/ja/documents/4.2.0/Ch12.html">SML#のML式としての合成:</a></strong> プログラミング言語の文法レベルでSQLを深く統合し、SQLクエリそのものを「MLの型付きの式」として記述・合成できるようにしています。これにより、コンパイル時にプログラムの他の部分と同じように厳密な型検査ができるため、実行前に確実にSQLの矛盾や型のエラーを発見でき、非常に安全にデータベースを操作できます。</li>
+    <li><strong><a href="https://learn.microsoft.com/ja-jp/dotnet/csharp/linq/">C#のLINQ (Language Integrated Query):</a></strong> C#の文法自体にデータ操作の構文を組み込み、コンパイル時の型チェックと直感的な記述を可能にしています。</li>
+    <li><strong><a href="https://www.prisma.io">Prisma ORM:</a></strong> Node.jsやTypeScriptの環境で主流なアプローチの一つです。専用の設定ファイルからデータベースにアクセスするためのコードを自動生成し、SQLの存在を高度に隠しつつ、プログラム側から安全にデータを操作できるようにします。</li>
+</ul>
+
+<h3>Drizzle ORM</h3>
+
+<p>このように様々な優れた解決策が存在する中、ここではTypeScriptの環境において近年急速に支持を集めている <strong>Drizzle ORM</strong> を取り上げます。</p>
+
+<p>Drizzle ORMの最大の特徴は「SQLを知っていれば、Drizzleも書ける」という基本方針にあります。PrismaのようにSQLの概念を過度に隠すのではなく、SQLの構文要素（SELECT, WHERE, LEFT JOINなど）をそのままTypeScriptの関数と型に1対1で対応させるアプローチをとっています。</p>
+
+
+
+<p>これにより、開発者はSQLが持つ本来の表現力を損なうことなく、1次元の文字列結合から脱却し、コンパイラの強力な型チェックとエラー検知の恩恵（型安全性）を享受することができます。<br>
+本記事では、PostgreSQL環境に対するDrizzle ORMの導入から、その型推論の威力、そして実際にどのように構造化されたクエリを組み立てるのかを検証していきます。</p>
+
+<h2>実験環境の構築（PostgreSQLとDrizzle ORMの準備）</h2>
+
+<p>ここでは、データベース（PostgreSQL）と、それを操作するためのプログラム（Node.js + TypeScript）の環境を構築します。適当な作業用のディレクトリを一つ作成し、ターミナルでその中に移動してから作業を始めてください。</p>
+
+<h3>データベース（PostgreSQL 17.6）の起動</h3>
+
+<p>まずはデータベースを用意します。作業ディレクトリの中に <code>compose.yaml</code> （または <code>docker-compose.yml</code>）という名前のファイルを作成し、以下の内容を記述します。</p>
+
+<pre><code class="yaml">services:
+  db:
+    image: postgres:17.6
+    container_name: drizzle-postgres-lab
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: drizzle_db
+    ports:
+      - "5432:5432"</code></pre>
+
+<p>ファイルを保存したら、ターミナルで以下のコマンドを実行してデータベースをバックグラウンドで起動します。</p>
+
+<pre><code class="shell">docker compose up -d</code></pre>
+
+<h3>Node.jsプロジェクトの初期化とパッケージのインストール</h3>
+
+<p>次に、プログラム側の準備をします。同じ作業ディレクトリで、Node.js のプロジェクトを初期化し、必要なパッケージをインストールします。</p>
+
+<pre><code class="shell"># プロジェクトの初期化（package.json が作成されます）
+npm init -y
+
+# アプリケーションの実行に必要なパッケージ（Drizzle本体とPostgreSQLの接続ツールなど）
+npm install drizzle-orm pg dotenv
+
+# 開発時に必要なツール（TypeScript本体、Drizzleの管理ツールなど）
+npm install -D drizzle-kit tsx typescript @types/pg @types/node</code></pre>
+
+<p>ここでインストールした主なパッケージの役割は以下の通りです。</p>
+<ul>
+    <li><b>drizzle-orm</b>: Drizzle本体。プログラム内で型安全なSQLを書くために使います。</li>
+    <li><b>pg</b>: Node.js から PostgreSQL に接続するための定番の通信ドライバーです。</li>
+    <li><b>drizzle-kit</b>: TypeScriptで書いたテーブル定義を読み取り、実際のデータベースの形を変える（マイグレーションする）ための強力な管理ツールです。</li>
+    <li><b>tsx</b>: TypeScriptのファイルをコンパイル（変換）せずに、そのまま手軽に実行するためのツールです。</li>
+</ul>
+
+<h3>各種設定ファイルの作成</h3>
+
+<p>ツールを動かすために、いくつか簡単な設定ファイルを用意します。作業ディレクトリの直下に、以下の3つのファイルを作成してください。</p>
+
+<h4>① TypeScriptの設定ファイル（tsconfig.json）</h4>
+<p>TypeScriptがコードをどう解釈するかを指定します。</p>
+<pre><code class="json">{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}</code></pre>
+
+<h4>② データベースの接続情報（.env）</h4>
+<p>プログラムがどこに接続すればいいのか、パスワードは何かなどの情報を環境変数として切り出します。<code>compose.yaml</code> で設定した内容と合わせます。</p>
+<pre><code class="env">DATABASE_URL="postgres://postgres:password@localhost:5432/drizzle_db"</code></pre>
+
+<h4>③ Drizzle Kitの設定ファイル（drizzle.config.ts）</h4>
+<p>テーブル構造を変更するツール（drizzle-kit）に対して、「どのファイルの定義を読み取って、どのデータベースに反映させるか」を教えます。</p>
+<pre><code class="typescript">import { defineConfig } from 'drizzle-kit';
+import * as dotenv from 'dotenv';
+
+// .env ファイルを読み込む
+dotenv.config();
+
+export default defineConfig({
+  // テーブル定義を書くファイルを指定
+  schema: './src/schema.ts',
+  // PostgreSQLを使用することを指定
+  dialect: 'postgresql',
+  dbCredentials: {
+    // .env で設定した接続先URLを使用
+    url: process.env.DATABASE_URL!,
+  },
+});</code></pre>
+
+<p>ここまで完了すると、作業ディレクトリの中身は以下のような構成になっているはずです。</p>
+
+<pre><code class="text">📁 あなたの作業ディレクトリ/
+ ┣ 📁 node_modules/
+ ┣ 📄 .env
+ ┣ 📄 compose.yaml
+ ┣ 📄 drizzle.config.ts
+ ┣ 📄 package.json
+ ┣ 📄 package-lock.json
+ ┗ 📄 tsconfig.json</code></pre>
+
+<p>これで、Drizzle ORM の強力な型推論と型検査を体験するための舞台が整いました。</p>
+
+<h2>テーブル定義とマイグレーション</h2>
+
+<p>これまでの開発手法では、データベース側の構造（テーブル）とプログラム側の構造（型やクラス）を別々に管理する必要があり、両者にズレが生じることでバグが発生しやすくなっていました。Drizzle ORMでは、TypeScriptでテーブルの設計図（スキーマ）を書くことで、この問題を解決します。</p>
+
+<h3>スキーマ（テーブル設計図）の作成</h3>
+
+<p>作業ディレクトリの中に新しく <code>src</code> というフォルダを作成し、その中に <code>schema.ts</code> というファイルを作成してください。ここに、ユーザー（users）と投稿（posts）の2つのテーブルを定義します。</p>
+
+<pre><code class="typescript">// src/schema.ts
+import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+// usersテーブルの定義
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  age: integer('age'),
+});
+
+// postsテーブルの定義（外部キー制約を含む）
+export const posts = pgTable('posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  authorId: integer('author_id').references(() => users.id),
+});
+</code></pre>
+
+<p>このコードを見るとわかるように、Drizzleのスキーマ定義はSQLの <code>CREATE TABLE</code> の構文と非常に似ています。<code>serial</code>（自動連番）や <code>text</code>、<code>integer</code> といったデータ型が、そのままTypeScriptの関数として提供されています。また、<code>references()</code> を使うことで、外部キー制約（Foreign Key）も簡単に表現できます。</p>
+
+<h3>データベースへの反映（drizzle-kit push）</h3>
+
+<p>TypeScriptで設計図を書いただけでは、まだPostgreSQLの中身は空っぽです。ここで、先ほどインストールした <code>drizzle-kit</code> というツールの出番です。</p>
+
+
+
+<p>ターミナルで以下のコマンドを実行してください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>このコマンドを実行すると、Drizzle Kit は以下の作業を自動で行います。</p>
+<ol>
+    <li><code>drizzle.config.ts</code> を読み込み、接続先のPostgreSQLを見つける。</li>
+    <li><code>src/schema.ts</code> に書かれたTypeScriptの定義を解析する。</li>
+    <li>現在のPostgreSQLの実際のテーブル状態と比較し、<b>足りないテーブルやカラムを作成するためのSQL（CREATE TABLE など）を自動生成して実行する。</b></li>
+</ol>
+
+<p>ターミナルに <code>[✓] Pulling shcmema from database...</code><code>[✓]Changes applied</code> のような緑色のメッセージが表示されれば成功です。これで、あなたが書いたTypeScriptの型定義と、PostgreSQLの実際の物理的なテーブル構造が完全に一致した状態になりました。</p>
+
+<h3>Drizzle Studioでデータベースの中身を覗く</h3>
+
+<p>Drizzleには、データベースの中身をブラウザ上で簡単に確認・編集できるGUIツールが標準で付属しています。ターミナルで以下のコマンドを実行してみてください。</p>
+
+<pre><code class="shell">npx drizzle-kit studio</code></pre>
+
+<p>コマンドを実行すると、<code>https://local.drizzle.studio</code> というURLが表示されます。これをブラウザで開くと、先ほど作成した <code>users</code> と <code>posts</code> テーブルがPostgreSQL上に確かに存在していることを視覚的に確認できます。</p>
+
+<img src="drizzle_studio.jpg" alt="Drizzle Studioのスクリーンショット" style="max-width: 100%; border: 1px solid #ccc; border-radius: 6px; margin: 15px 0;" />
+
+<h2>実験</h2>
+
+<p>データベースへアクセスするためのメインプログラムを作成します。<code>src</code> フォルダ内に <code>index.ts</code> というファイルを作成し、データベースへの接続準備を記述します。</p>
+
+<pre><code class="typescript">// src/index.ts
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Client } from 'pg';
+import { users } from './schema';
+import * as dotenv from 'dotenv';
+
+dotenv.config();
+
+// PostgreSQLへの接続クライアントを作成
+const client = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
+
+async function main() {
+  await client.connect();
+  const db = drizzle(client); // Drizzleのインスタンスを作成
+
+  console.log("データベースに接続しました！");
+  
+  // === ここに実験コードを書いていきます ===
+
+  await client.end();
+}
+
+main();
+</code></pre>
+
+<p>このプログラムを実行するには、ターミナルで <code>npx tsx src/index.ts</code> と入力します。（※ <code>tsx</code> はTypeScriptをそのまま実行してくれる便利なツールです）</p>
+
+<h3>実験1：INSERT時の型検査（文字列と数値のミスを防ぐ）</h3>
+
+<p>まずは、<code>users</code> テーブルに新しいユーザーを追加（INSERT）する処理を書いてみましょう。もし従来の生のSQL（文字列結合）で、年齢（整数型）の場所に誤って文字列を入れようとした場合、プログラムは実行され、PostgreSQLに到達した段階で初めてエラーとして弾かれます。</p>
+
+<p>しかし、Drizzle ORMでは違います。<code>index.ts</code> の <code>main</code> 関数の中に、わざと型を間違えた以下のコードを記述してみてください。</p>
+
+<pre><code class="typescript">  // ❌ 意図的なエラーの実験
+  await db.insert(users).values({
+    name: 'Alice',
+    age: '二十歳' // ageは整数(integer)で定義したのに、文字列を渡そうとしている
+  });
+</code></pre>
+
+<p>このコードをVSCodeなどのエディタに貼り付けると、実行するまでもなく <code>age</code> の部分に<b>赤い波線（コンパイルエラー）</b>が表示されるはずです。マウスを乗せると、以下のようなTypeScriptのエラーメッセージが出ます。</p>
+
+<div class="callout-red">
+    <b>【TypeScriptのコンパイルエラー（抜粋）】</b><br>
+    <code>型 'string' を型 'number | SQL&lt;unknown&gt; | Placeholder&lt;string, any&gt; | null | undefined' に割り当てることはできません。</code>
+</div>
+
+<p>エラーメッセージの中に <code>SQL</code> や <code>Placeholder</code> といった見慣れない文字が含まれていますが、これはDrizzleが「動的なSQLの注入」などを許容するための高度な型です。ここで最も重要なのは、<b>「文字列（string）は、数値（number）や空（null）の代わりにはならない」</b>とコンパイラがハッキリと怒ってくれている点です。</p>
+
+<p>これが「型付きの式」としてSQLを扱う最大のメリットです。スキーマ定義（<code>schema.ts</code>）を真実の源として、<b>「PostgreSQLのテーブル構造」が「TypeScriptの型システム」へと完全に写像（マッピング）されている</b>ため、コンパイラが「このテーブルのこのカラムに、そのデータ型はおかしい」と事前に気づいてくれるのです。カラム名のタイポ（例：<code>naem: 'Alice'</code>）なども同様に弾かれます。</p>
+
+<p>エラーを確認したら、正しい型（数値）に修正して実行してみましょう。</p>
+
+<pre><code class="typescript">  // ✅ 正しいデータ型の挿入
+  await db.insert(users).values({
+    name: 'Alice',
+    age: 20
+  });
+  console.log("Aliceを登録しました！");
+</code></pre>
+
+<p>ターミナルで <code>npx tsx src/index.ts</code> を実行し、成功メッセージが出ればINSERTは完了です。</p>
+
+<h3>実験2：SELECT時の自動型推論（手作業での型定義からの解放）</h3>
+
+<p>次に、先ほど挿入したデータを取得（SELECT）してみましょう。ここにもDrizzle ORMの強力な機能が隠されています。</p>
+
+<p><code>index.ts</code> の末尾（<code>client.end()</code>の前）に以下のコードを追加してください。</p>
+
+<pre><code class="typescript">  // データの取得（SELECT * FROM users と同義）
+  const allUsers = await db.select().from(users);
+
+  // 取得したデータの1人目の名前を出力
+  console.log(allUsers[0].name); 
+</code></pre>
+
+<p>従来のNode.js開発では、データベースから返ってくるデータがどのような形をしているかTypeScriptは知らないため、開発者が手作業で <code>interface User { id: number; name: string; age: number; }</code> といった型定義を書き、それを強制的に割り当てる（キャストする）という危険な作業が必要でした。</p>
+
+<p>しかしDrizzleでは、<b>自分で型を一切書いていないのに、<code>allUsers</code> 変数にカーソルを合わせると、自動的に正しい型が推論されている</b>ことがわかります。</p>
+
+<div class="callout-green">
+    <b>【Drizzleによって自動推論された型】</b><br>
+    <code>const allUsers: { id: number; name: string; age: number | null; }[]</code>
+</div>
+
+<p>エディタ上で <code>allUsers[0].</code> と打ち込むと、候補として <code>id</code>, <code>name</code>, <code>age</code> が自動補完（サジェスト）されます。スキーマ定義の時点で <code>age: integer('age')</code> と記述した際、<code>notNull()</code> をつけていなかったため、TypeScript側でも正確に <code>number | null</code>（数値または空）として推論されている点に注目してください。</p>
+
+<p>このように、構造化されたクエリビルダーを用いることで、<b>「書く時（INSERTなど）」も「読む時（SELECTなど）」も、データベースとプログラム間の型が完全に一致し、ミスによるバグの発生を原理的に封じ込める</b>ことができるのです。</p>
+
+<h2>CREATE （テーブル設計とスキーマ定義）</h2>
+
+<p>SQL の <code>CREATE TABLE</code> は、新しいテーブルをデータベースに作成する命令です。Drizzle ORM では、TypeScript でスキーマを定義することで、型安全にテーブルを設計できます。ここでは、Drizzle が提供する主なデータ型、制約（NOT NULL、PRIMARY KEY）、初期値の設定方法を解説します。</p>
+
+<h3>Drizzle で標準で使えるデータ型</h3>
+
+<p>PostgreSQL を対象としたDrizzle では、以下の主なデータ型が提供されています。</p>
+
+<h4>数値型</h4>
+<ul>
+    <li><code>serial('columnName')</code>: 自動採番される整数（1から開始）。PRIMARY KEY に向く。</li>
+    <li><code>smallserial('columnName')</code>: 小さな自動採番整数（-32,768 〜 32,767）。</li>
+    <li><code>bigserial('columnName')</code>: 大きな自動採番整数（-9,223,372,036,854,775,808 〜 9,223,372,036,854,775,807）。</li>
+    <li><code>integer('columnName')</code>: 整数型（-2,147,483,648 〜 2,147,483,647）。</li>
+    <li><code>smallint('columnName')</code>: 小さい整数型（-32,768 〜 32,767）。</li>
+    <li><code>bigint('columnName')</code>: 大きい整数型。</li>
+    <li><code>real('columnName')</code>: 浮動小数点数（単精度）。</li>
+    <li><code>numeric('columnName', { precision: 10, scale: 2 })</code>: 固定小数点数。precision は全体の桁数、scale は小数点以下の桁数。</li>
+</ul>
+
+<h4>文字列型</h4>
+<ul>
+    <li><code>text('columnName')</code>: 可変長の文字列（容量制限なし）。</li>
+    <li><code>varchar('columnName', { length: 255 })</code>: 可変長の文字列（最大長指定可能）。</li>
+    <li><code>char('columnName', { length: 10 })</code>: 固定長の文字列（余白はスペースで埋まる）。</li>
+</ul>
+
+<h4>日時型</h4>
+<ul>
+    <li><code>date('columnName')</code>: 年月日（2025-02-24）。</li>
+    <li><code>time('columnName')</code>: 時分秒（14:30:45）。</li>
+    <li><code>timestamp('columnName')</code>: 年月日と時分秒（2025-02-24 14:30:45）。</li>
+</ul>
+
+<h4>その他の型</h4>
+<ul>
+    <li><code>boolean('columnName')</code>: 真偽値（true / false）。</li>
+    <li><code>uuid('columnName')</code>: UUID（universally unique identifier）。</li>
+    <li><code>json('columnName')</code>: JSON 形式のデータ。</li>
+    <li><code>jsonb('columnName')</code>: バイナリ形式の JSON（よりパフォーマンス向上）。</li>
+</ul>
+
+<h3>NOT NULL 制約（値が必須であることを指定）</h3>
+
+<p><code>NOT NULL</code> 制約は、そのカラムに NULL（欠損値）を格納できないことを指定します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT,
+  age INTEGER NOT NULL
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email'),
+  age: integer('age').notNull(),
+});</code></pre>
+    </div>
+</div>
+
+<p>name と age には <code>.notNull()</code> を指定しているため、これらのカラムに NULL を挿入しようとするとエラーが発生します。一方、email は <code>.notNull()</code> がないため、NULL を格納できます。</p>
+
+<h3>PRIMARY KEY（主キーの指定）</h3>
+
+<p><code>PRIMARY KEY</code> は、テーブル内の各レコードを一意に識別するカラムの役割を担います。PRIMARY KEY に指定されたカラムは自動的に NOT NULL と UNIQUE（一意）になります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price INTEGER
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  price: integer('price'),
+});</code></pre>
+    </div>
+</div>
+
+<p><code>.primaryKey()</code> メソッドを使うことで、そのカラムを主キーとして指定します。PRIMARY KEY に指定されたカラムは自動採番されるため、INSERT 時に値を明示的に指定する必要がありません。</p>
+
+<h3>初期値の設定（DEFAULT）</h3>
+
+<p><code>DEFAULT</code> を使うことで、INSERT 時に値が指定されなかった場合の初期値を定義できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  quantity INTEGER DEFAULT 1
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, timestamp, integer } from 'drizzle-orm/pg-core';
+
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  status: text('status').default('pending'),
+  createdAt: timestamp('created_at').defaultNow(),
+  quantity: integer('quantity').default(1),
+});</code></pre>
+    </div>
+</div>
+
+<p>重要なポイント：</p>
+<ul>
+    <li><code>.default('pending')</code>: 文字列の初期値を指定。</li>
+    <li><code>.defaultNow()</code>: 現在の日時を自動設定。SQL の <code>CURRENT_TIMESTAMP</code> に対応。</li>
+    <li><code>.default(1)</code>: 数値の初期値を指定。</li>
+</ul>
+
+<h3>複合的な例：複数の制約と初期値を組み合わせる</h3>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE employees (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  salary NUMERIC(10, 2),
+  hired_at DATE DEFAULT CURRENT_DATE,
+  is_active BOOLEAN DEFAULT true
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, numeric, date, boolean } from 'drizzle-orm/pg-core';
+
+export const employees = pgTable('employees', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  salary: numeric('salary', { precision: 10, scale: 2 }),
+  hiredAt: date('hired_at').defaultNow(),
+  isActive: boolean('is_active').default(true),
+});</code></pre>
+    </div>
+</div>
+
+<h2>CREATE 演習問題</h2>
+
+<p>ここまでで学んだデータ型、制約、初期値の設定を、実際にDrizzle ORMを使って定義する練習をしましょう。</p>
+
+<div class="quiz-question">
+    <strong>Q1. 複数のデータ型を使ったテーブル定義</strong><br>
+    <code>products</code> テーブルを定義してください。以下のカラムを含めてください：
+    <ul>
+        <li><code>id</code>: 自動採番される整数（主キー）</li>
+        <li><code>name</code>: 商品名（テキスト）</li>
+        <li><code>price</code>: 価格（固定小数点、小数点以下2桁）</li>
+        <li><code>stock</code>: 在庫数（整数）</li>
+        <li><code>description</code>: 商品説明（テキスト、任意）</li>
+        <li><code>created_at</code>: 作成日時（タイムスタンプ）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, numeric, integer, timestamp } from 'drizzle-orm/pg-core';
+
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name'),
+  price: numeric('price', { precision: 10, scale: 2 }),
+  stock: integer('stock'),
+  description: text('description'),
+  createdAt: timestamp('created_at'),
+});</code></pre>
+        <p>解説：複数のデータ型を組み合わせることで、実務的なテーブル設計ができます。price には固定小数点型 numeric を使用することで、金銭データの精度を保証します。timestamp は日時データを正確に管理します。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q2. NOT NULL 制約の指定</strong><br>
+    <code>users</code> テーブルを定義してください。以下のカラムを含めてください：
+    <ul>
+        <li><code>id</code>: 自動採番される整数（主キー）</li>
+        <li><code>name</code>: ユーザー名（テキスト、必須）</li>
+        <li><code>email</code>: メールアドレス（テキスト、必須）</li>
+        <li><code>phone</code>: 電話番号（テキスト、任意）</li>
+        <li><code>age</code>: 年齢（整数、必須）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+  phone: text('phone'),
+  age: integer('age').notNull(),
+});</code></pre>
+        <p>解説：<code>.notNull()</code> を指定したカラムには、NULL を挿入できません。name、email、age は必須フィールドとなり、データの整合性が保証されます。一方、phone は <code>.notNull()</code> が指定されていないため、NULL を格納できます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q3. PRIMARY KEY と初期値の設定</strong><br>
+    <code>comments</code> テーブルを定義してください。以下のカラムを含めてください：
+    <ul>
+        <li><code>id</code>: 自動採番される整数（主キー）</li>
+        <li><code>content</code>: コメント内容（テキスト、必須）</li>
+        <li><code>rating</code>: 評価（整数、デフォルト値は 5）</li>
+        <li><code>is_verified</code>: 検証済みかどうか（ブール値、デフォルト値は false）</li>
+        <li><code>created_at</code>: 作成日時（タイムスタンプ、デフォルトは現在時刻）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, integer, boolean, timestamp } from 'drizzle-orm/pg-core';
+
+export const comments = pgTable('comments', {
+  id: serial('id').primaryKey(),
+  content: text('content').notNull(),
+  rating: integer('rating').default(5),
+  isVerified: boolean('is_verified').default(false),
+  createdAt: timestamp('created_at').defaultNow(),
+});</code></pre>
+        <p>解説：<code>.primaryKey()</code> で id を主キーとし、<code>.default()</code> で各カラムのデフォルト値を指定しています。INSERT 時にこれらのカラムへの値の指定を省略した場合、自動的にデフォルト値が使用されます。これにより、アプリケーション側でのデフォルト値管理の手間が削減されます。</p>
+    </details>
+</div>
+
+<h3>サロゲートキーの自動採番</h3>
+
+<p>サロゲートキーとは、ビジネス的な意味とは関係なく、レコードを一意に識別するために設計されるキーです。通常、<code>serial</code> または <code>bigserial</code> を使うことで、自動採番される整数値をキーとします。これにより、INSERT時に明示的にキー値を指定する必要がなく、データベースが自動的に値を割り当てます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT
+);
+
+-- INSERT時にidを指定しない
+INSERT INTO posts (title, content) 
+VALUES ('タイトル', 'コンテンツ');
+-- idは自動採番されて、例えば1, 2, 3... となる</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text } from 'drizzle-orm/pg-core';
+
+export const posts = pgTable('posts', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  content: text('content'),
+});
+
+// INSERT時にidを指定しない
+const result = await db.insert(posts).values({
+  title: 'タイトル',
+  content: 'コンテンツ',
+});
+// idは自動採番される</code></pre>
+    </div>
+</div>
+
+<p>大規模なデータセットを扱う場合は、<code>serial</code>（232万件まで）ではなく <code>bigserial</code>（9,223,372,036,854,775,807件まで）の使用を検討してください。</p>
+
+<h3>UUIDを使う場合</h3>
+
+<p>UUID（Universally Unique Identifier）は、世界中で一意な識別子を生成する方式です。<code>serial</code> のような連番ではなく、ランダムな128ビットの値を使います。マイクロサービスやクラウド環境では、UUID が主キーとして用いられることが多いです。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL
+);
+
+-- INSERT時にidを指定しない
+INSERT INTO users (name, email) 
+VALUES ('太郎', 'taro@example.com');
+-- idは自動生成されて、例えば 'a1b2c3d4-e5f6-4g7h-8i9j-0k1l2m3n4o5p' となる</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, uuid, text } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  name: text('name').notNull(),
+  email: text('email').notNull(),
+});
+
+// INSERT時にidを指定しない
+const result = await db.insert(users).values({
+  name: '太郎',
+  email: 'taro@example.com',
+});
+// idは自動生成される</code></pre>
+    </div>
+</div>
+
+<p>UUID の利点は、分散システムでも競合せずに一意な識別子を生成できることです。ただし、Integerキーよりもストレージとインデックスサイズが大きくなるため、パフォーマンス面での検討が必要です。</p>
+
+<h3>CHECK制約</h3>
+
+<p><code>CHECK</code> 制約は、カラムの値が特定の条件を満たすことを保証します。例えば、年齢は0以上、価格は正の数値である、といった条件をデータベースレベルで強制します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE products (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  price NUMERIC(10, 2) CHECK (price > 0),
+  stock INTEGER CHECK (stock >= 0)
+);
+
+-- price = -100 では INSERT失敗
+-- stock = -5 では INSERT失敗</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, numeric, integer } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  price: numeric('price', { precision: 10, scale: 2 }),
+  stock: integer('stock'),
+}, (table) => [
+  // CHECK制約をテーブル制約として定義
+  sql`CHECK (${table.price} > 0)`,
+  sql`CHECK (${table.stock} >= 0)`,
+]);</code></pre>
+    </div>
+</div>
+
+<p>CHECK 制約によってデータベースレベルで値の妥当性が検証されるため、不正なデータの挿入を防ぐことができます。これにより、アプリケーション側での宛当性チェックの入れ忘れをカバーできます。</p>
+
+<h3>外部キー制約（FK制約）：ON DELETE CASCADE</h3>
+
+<p><code>ON DELETE CASCADE</code> は、参照元レコードが削除されたときに、参照先レコードも自動的に削除される動作です。例えば、顧客が削除されたとき、その顧客のすべての注文も自動的に削除されるケースに使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE customers (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE orders (
+  id SERIAL PRIMARY KEY,
+  customerId INTEGER NOT NULL,
+  totalAmount NUMERIC(10, 2),
+  FOREIGN KEY (customerId) REFERENCES customers(id) 
+    ON DELETE CASCADE
+);
+
+-- customers から id=1 を削除すると、
+-- orders の customerId=1 のレコードもすべて削除される</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, integer, numeric } from 'drizzle-orm/pg-core';
+
+export const customers = pgTable('customers', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customerId').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+  totalAmount: numeric('totalAmount', { precision: 10, scale: 2 }),
+});</code></pre>
+    </div>
+</div>
+
+<p><code>ON DELETE CASCADE</code> は親レコード削除時に自動で関連レコードも削除するため、手作業で削除する手間が省けます。ただし、生かされたレコードが多い場合は削除処理が重くなるため、パフォーマンス面での検討が必要です。</p>
+
+<h3>外部キー制約（FK制約）：ON DELETE SET NULL</h3>
+
+<p><code>ON DELETE SET NULL</code> は、参照元レコードが削除されたときに、参照先レコードの外部キーカラムを NULL に設定する動作です。参照先レコードは削除されずに、関連性を失わせるケースに使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">CREATE TABLE departments (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+CREATE TABLE employees (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  departmentId INTEGER,
+  FOREIGN KEY (departmentId) REFERENCES departments(id) 
+    ON DELETE SET NULL
+);
+
+-- departments から id=1 を削除すると、
+-- employees の departmentId=1 は NULL に設定される
+-- employees のレコード自体は削除されない</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const departments = pgTable('departments', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const employees = pgTable('employees', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  departmentId: integer('departmentId').references(() => departments.id, { onDelete: 'set null' }),
+});</code></pre>
+    </div>
+</div>
+
+<p><code>ON DELETE SET NULL</code> は参照先レコードを保持したいが、関連性を失わせたい場合に使用します。departmentId が NULL 許可である必要があるため、カラム定義で <code>.notNull()</code> を指定しません。</p>
+
+<h2>CREATE（追加制約）演習問題</h2>
+
+<div class="quiz-question">
+    <strong>Q4. サロゲートキーと CHECK 制約</strong><br>
+    <code>books</code> テーブルを定義してください。以下のカラムを含めてください：
+    <ul>
+        <li><code>id</code>: 自動採番される整数（主キー）</li>
+        <li><code>title</code>: 書籍名（テキスト、必須）</li>
+        <li><code>price</code>: 価格（固定小数点、必須、かつ 0より大きい値のみ許可）</li>
+        <li><code>pages</code>: ページ数（整数、0以上のみ許可）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, numeric, integer } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+export const books = pgTable('books', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  price: numeric('price', { precision: 10, scale: 2 }).notNull(),
+  pages: integer('pages'),
+}, (table) => [
+  sql`CHECK (${table.price} > 0)`,
+  sql`CHECK (${table.pages} >= 0)`,
+]);</code></pre>
+        <p>解説：CHECK制約をテーブル制約として定義することで、price は常に正の値、pages は常に0以上の値に限定されます。これにより、不正なデータ（負の価格など）の挿入をデータベースレベルで防ぐことができます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q5. UUID を使った主キー</strong><br>
+    <code>sessions</code> テーブルを定義してください。以下のカラムを含めてください：
+    <ul>
+        <li><code>id</code>: UUID（主キー、自動生成）</li>
+        <li><code>userId</code>: ユーザーID（整数、必須）</li>
+        <li><code>token</code>: セッショントークン（テキスト、必須）</li>
+        <li><code>createdAt</code>: 作成日時（タイムスタンプ、デフォルトは現在時刻）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, uuid, integer, text, timestamp } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+
+export const sessions = pgTable('sessions', {
+  id: uuid('id').primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer('userId').notNull(),
+  token: text('token').notNull(),
+  createdAt: timestamp('createdAt').defaultNow(),
+});</code></pre>
+        <p>解説：UUID を主キーとすることで、分散システムや非同期処理でも競合のない一意な識別子が生成されます。<code>gen_random_uuid()</code> は PostgreSQL の関数で、INSERT 時に自動的に新しい UUID を生成します。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q6. ON DELETE CASCADE を使った外部キー制約</strong><br>
+    <code>categories</code> と <code>items</code> の2つのテーブルを定義してください。<code>items</code> は <code>categories</code> を参照しており、カテゴリが削除されるとそのカテゴリに属するすべてのアイテムも削除されるようにしてください。
+    <ul>
+        <li><code>categories</code>: <code>id</code>（主キー）、<code>name</code>（テキスト、必須）</li>
+        <li><code>items</code>: <code>id</code>（主キー）、<code>name</code>（テキスト、必須）、<code>categoryId</code>（外部キー、ON DELETE CASCADE）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const items = pgTable('items', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  categoryId: integer('categoryId').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+});</code></pre>
+        <p>解説：<code>.references(() => categories.id, { onDelete: 'cascade' })</code> により、categories から id=1 を削除すると、items の categoryId=1 のレコードもすべて削除されます。これにより、孤立したデータが残らず、整合性が保たれます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q7. ON DELETE SET NULL を使った外部キー制約</strong><br>
+    <code>managers</code> と <code>staff</code> の2つのテーブルを定義してください。<code>staff</code> は <code>managers</code> を参照しており、マネージャーが削除されるとそのマネージャーに割り当てられたスタッフの <code>managerId</code> は NULL に設定されるようにしてください。
+    <ul>
+        <li><code>managers</code>: <code>id</code>（主キー）、<code>name</code>（テキスト、必須）</li>
+        <li><code>staff</code>: <code>id</code>（主キー）、<code>name</code>（テキスト、必須）、<code>managerId</code>（外部キー、ON DELETE SET NULL）</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { pgTable, serial, text, integer } from 'drizzle-orm/pg-core';
+
+export const managers = pgTable('managers', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const staff = pgTable('staff', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  managerId: integer('managerId').references(() => managers.id, { onDelete: 'set null' }),
+});</code></pre>
+        <p>解説：<code>.references(() => managers.id, { onDelete: 'set null' })</code> により、managers から id=1 を削除すると、staff の managerId=1 は NULL に設定されます。スタッフレコード自体は削除されず、マネージャー情報だけが失われます。managerId が NULL を許可する設定になっていることが重要です。</p>
+    </details>
+</div>
+
+<h2>SELECT</h2>
+
+<p>これまでの講義で学んだSQLの柔軟なデータ操作（演算、CASE式、日付処理など）を、Drizzle ORMでどのように記述するのか、機能ごとに細かく確認していきます。</p>
+
+<h3>任意のカラム取得とエイリアスの付与</h3>
+<p>Drizzleの <code>.select()</code> メソッドの引数にオブジェクトを渡すことで、取得するカラムを絞り込み、かつプログラム側での変数名（エイリアス）を定義できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  item_name AS name,
+  price AS unit_price
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select({
+  name: orders.itemName,
+  unitPrice: orders.price,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>定数値カラムと算術・文字列演算</h3>
+<p><code>sql</code> テンプレートリテラルを使用することで、リテラル値や計算式をカラムとして追加できます。<code>sql&lt;型&gt;</code> と記述することで、計算結果の型をTypeScriptに教えることができます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  UPPER(item_name),
+  price * quantity AS total,
+  'JPY' AS currency
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select({
+  upperName: sql&lt;string&gt;`UPPER(${orders.itemName})`,
+  total: sql&lt;number&gt;`${orders.price} * ${orders.quantity}`,
+  currency: sql&lt;string&gt;`'JPY'`,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>CASE式による条件分岐</h3>
+<p>SQLの <code>CASE WHEN</code> 式も <code>sql</code> タグ内に記述可能です。Drizzleのカラムオブジェクトを <code>${}</code> で埋め込むことで、カラム名の変更などにも追従できる安全な式が書けます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  item_name,
+  CASE 
+    WHEN quantity >= 10 THEN 'Bulk'
+    ELSE 'Retail'
+  END AS type
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select({
+  name: orders.itemName,
+  type: sql&lt;string&gt;`
+    CASE 
+      WHEN ${orders.quantity} >= 10 THEN 'Bulk'
+      ELSE 'Retail'
+    END
+  `,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>NULL値の変換 (COALESCE)</h3>
+<p>値が <code>NULL</code> の場合にデフォルト値を返す <code>COALESCE</code> 関数も、同様の手法で実装できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  COALESCE(category, 'None')
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select({
+  category: sql&lt;string&gt;`COALESCE(${orders.category}, 'None')`,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>レコードの重複除去 (DISTINCT)</h3>
+<p>Drizzleには専用の <code>.selectDistinct()</code> メソッドが用意されており、これを使うことで <code>DISTINCT</code> 句を付与できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT DISTINCT category FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.selectDistinct({
+  category: orders.category,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>日付・時刻関数と現在時刻との演算</h3>
+<p>PostgreSQLの <code>CURRENT_DATE</code> や日付の引き算も、<code>sql</code> を使って型安全に扱えます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  ordered_at,
+  CURRENT_DATE - ordered_at::date AS days_ago
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select({
+  orderedAt: orders.orderedAt,
+  daysAgo: sql&lt;number&gt;`CURRENT_DATE - ${orders.orderedAt}::date`,
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+
+<h2>SELECT 演習問題</h2>
+
+<p>ここまでで学んだ様々なSELECT操作を、実際にDrizzle ORMを使って記述する練習をしましょう。以下の6問に挑戦してください。</p>
+
+<div class="quiz-question">
+    <strong>Q1. カラム・エイリアスの取得</strong><br>
+    <code>users</code> テーブルから、ユーザーの <code>id</code> と <code>name</code> を取得し、プログラム内で変数名を <code>userId</code> と <code>userName</code> に変更してください。生のSQLでは <code>SELECT id AS userId, name AS userName FROM users;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">const result = await db.select({
+  userId: users.id,
+  userName: users.name,
+}).from(users);</code></pre>
+        <p>解説：<code>.select()</code> の引数にオブジェクト形式で、<code>{ newName: column }</code> と記述することで、エイリアスを付与できます。TypeScriptの自動補完も効くため、カラム名の間違いは即座に検出されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q2. 定数値カラムと算術演算</strong><br>
+    <code>orders</code> テーブル（<code>price</code> と <code>quantity</code> カラムがあると想定）から、商品の単価と数量を取得し、<b>合計額（price × quantity）</b>を新しいカラムとして <code>totalPrice</code> という変数名で計算してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  price: orders.price,
+  quantity: orders.quantity,
+  totalPrice: sql&lt;number&gt;`${orders.price} * ${orders.quantity}`,
+}).from(orders);</code></pre>
+        <p>解説：<code>sql&lt;型&gt;</code> テンプレートリテラルを使うことで、任意のSQL表現を埋め込めます。<code>${カラム名}</code> とすることで、注入攻撃（SQLインジェクション）に強い安全なクエリが生成されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q3. CASE式による条件分岐</strong><br>
+    <code>users</code> テーブルの <code>age</code> カラムを基に、ユーザーの年齢グループを分類してください。<b>18歳未満は 'Junior'、18～65歳は 'Adult'、66歳以上は 'Senior'</b> として、<code>ageGroup</code> という変数名で取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  name: users.name,
+  age: users.age,
+  ageGroup: sql&lt;string&gt;`
+    CASE
+      WHEN ${users.age} &lt; 18 THEN 'Junior'
+      WHEN ${users.age} &lt;= 65 THEN 'Adult'
+      ELSE 'Senior'
+    END
+  `,
+}).from(users);</code></pre>
+        <p>解説：複雑な条件判定は <code>sql</code> タグで直接SQLの <code>CASE WHEN</code> を記述します。Drizzleはこの計算結果の型（<code>&lt;string&gt;</code>）を把握しているため、TypeScript側での操作時にも正しい型チェックが行われます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q4. NULL値の変換（COALESCE）</strong><br>
+    <code>users</code> テーブルの <code>city</code> カラムは NULL の可能性があります。<code>city</code> が NULL であれば 'Unknown' をデフォルト値として返し、そうでなければ元の <code>city</code> の値を <code>location</code> という変数名で取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  name: users.name,
+  location: sql&lt;string&gt;`COALESCE(${users.city}, 'Unknown')`,
+}).from(users);</code></pre>
+        <p>解説：<code>COALESCE</code> は最初の非NULL値を返す関数です。ここでは、<code>city</code> が NULL なら 'Unknown'、そうでなければ <code>city</code> の値が <code>location</code> に格納されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q5. 重複除去（DISTINCT）</strong><br>
+    <code>orders</code> テーブルに複数の注文レコードがありますが、同じカテゴリーの注文が複数存在しています。<code>category</code> カラムの重複を除去して、<b>全てのユニークなカテゴリーのリストを取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">const result = await db.selectDistinct({
+  category: orders.category,
+}).from(orders);</code></pre>
+        <p>解説：<code>.select()</code> の代わりに <code>.selectDistinct()</code> を使うことで、SQLの <code>DISTINCT</code> 句が自動的に付与されます。重複するカテゴリーは1件だけ返されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question">
+    <strong>Q6. 日付・時刻関数と現在日付の演算</strong><br>
+    <code>orders</code> テーブルの <code>orderedAt</code> カラム（日付型）から、<b>その注文がいつ前からのものなのか「今日から何日経過しているか」を日数で計算</b>して、<code>daysAgo</code> という変数名で取得してください。PostgreSQLでは、日付から日付を引くと整数（日数）が返ります。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  itemName: orders.itemName,
+  orderedAt: orders.orderedAt,
+  daysAgo: sql&lt;number&gt;`CURRENT_DATE - CAST(${orders.orderedAt} AS DATE)`,
+}).from(orders);</code></pre>
+        <p>解説：PostgreSQLの <code>CURRENT_DATE</code> は「今日の日付」を返します。これから注文日付を引くことで、経過日数が得られます。<code>CAST(...AS DATE)</code> はタイムスタンプ型を日付型に変換します。</p>
+    </details>
+</div>
+
+
+
+<h2>ORDER BY</h2>
+
+<p>データベースから取得したレコードを特定の順序で並べるには、SQL の <code>ORDER BY</code> 句を使います。ここでは、Drizzle ORM での様々なソート方法を解説します。</p>
+
+<h3>標準的なORDER BY の使い方（特定のカラムでの整列）</h3>
+<p>最も基本的な使い方は、単一のカラムで昇順（ASC）または降順（DESC）に並べることです。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+ORDER BY age ASC;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { asc, desc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .orderBy(asc(users.age));</code></pre>
+    </div>
+</div>
+
+<p>Drizzle では <code>asc()</code> と <code>desc()</code> 関数を使ってソート方向を指定します。デフォルトは昇順なので、<code>.orderBy(users.age)</code> だけでも昇順になります。</p>
+
+<h3>複数ソートキーの指定</h3>
+<p>複数のカラムを組み合わせてソートする場合、優先順位順に並べて指定します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM orders 
+ORDER BY category ASC, price DESC;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { asc, desc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(orders)
+  .orderBy(
+    asc(orders.category),
+    desc(orders.price)
+  );</code></pre>
+    </div>
+</div>
+
+<p>複数のソートキーを指定する場合、<code>.orderBy()</code> の引数に複数の <code>asc()</code> / <code>desc()</code> 呼び出しをカンマで並べます。左から順に優先度が高くなります。</p>
+
+<h3>NULL値のソート位置を指定</h3>
+<p>データベースには NULL 値が存在することがあります。PostgreSQL では、NULL を昇順の最後に置くか、降順の最初に置くかを制御できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+ORDER BY city ASC NULLS FIRST;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { asc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .orderBy(asc(users.city, { nulls: 'first' }));</code></pre>
+    </div>
+</div>
+
+<p><code>asc()</code> / <code>desc()</code> の第2引数にオプションオブジェクトを渡して、<code>nulls: 'first'</code> または <code>nulls: 'last'</code> を指定できます。</p>
+
+<h3>CASE式を利用したORDER BY句の指定</h3>
+<p>ソートの基準を複雑な条件で決めたい場合、<code>CASE</code> 式を使ってカスタムな並べ替え順序を定義できます。例えば、年齢グループごとに優先度を変える場合などです。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+ORDER BY 
+  CASE 
+    WHEN age < 18 THEN 0
+    WHEN age <= 65 THEN 1
+    ELSE 2
+  END ASC;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { asc, sql } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .orderBy(
+    asc(sql&lt;number&gt;`
+      CASE 
+        WHEN ${users.age} &lt; 18 THEN 0
+        WHEN ${users.age} &lt;= 65 THEN 1
+        ELSE 2
+      END
+    `)
+  );</code></pre>
+    </div>
+</div>
+
+<p><code>sql</code> タグで任意のSQL式を <code>asc()</code> / <code>desc()</code> に渡すことで、複雑なソート基準を定義できます。このアプローチにより、業務ロジックに対応した柔軟な並べ替えが実現できます。</p>
+
+<h2>ORDER BY 演習問題</h2>
+
+<p>ここまでで学んだ様々なORDER BY操作を、実際にDrizzle ORMを使って記述する練習をしましょう。以下の4問に挑戦してください。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. 標準的なORDER BY の使い方（特定のカラムでの整列）</strong><br>
+    <code>products</code> テーブルから全ての商品を取得し、価格（<code>price</code>）の昇順で並べてください。生のSQLでは <code>SELECT * FROM products ORDER BY price ASC;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { asc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(products)
+  .orderBy(asc(products.price));</code></pre>
+        <p>解説：<code>.orderBy(asc(カラム))</code> で昇順にソートできます。降順にしたい場合は <code>desc()</code> を使用します。デフォルトは昇順であるため、<code>.orderBy(products.price)</code> と書くだけでも同じ結果になります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. 複数ソートキーの指定</strong><br>
+    <code>employees</code> テーブルから全ての従業員を取得し、<b>部門（<code>department</code>）で昇順ソートしたあと、その部門内で給与（<code>salary</code>）を降順でソート</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { asc, desc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(employees)
+  .orderBy(
+    asc(employees.department),
+    desc(employees.salary)
+  );</code></pre>
+        <p>解説：複数のソート条件を指定する場合、<code>.orderBy()</code> の引数に複数の条件をカンマで並べます。優先度は左から高くなり、まず部門でグループ分けされ、その中で給与の高い順に並びます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. NULL値のソート位置を指定</strong><br>
+    <code>users</code> テーブルから全てのユーザーを取得し、住所（<code>address</code>）で昇順ソートしてください。ただし、<b>住所が NULL のユーザーは最初に表示</b>させてください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { asc } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .orderBy(asc(users.address, { nulls: 'first' }));</code></pre>
+        <p>解説：<code>nulls: 'first'</code> を指定すると、NULL 値が最初に表示されます。逆に最後に表示させたい場合は <code>nulls: 'last'</code> を使用します。このオプションは <code>asc()</code> / <code>desc()</code> 両方で使用可能です。</p>
+    </details>
+</div>
+
+<h3>tasksテーブルの定義</h3>
+
+<p>ORDER BY で CASE 式を使う例として、<code>tasks</code> テーブルを用いります。このテーブルは、タスク管理システムで使用される想定です。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, text, varchar } from 'drizzle-orm/pg-core';
+
+export const tasks = pgTable('tasks', {
+  id: serial('id').primaryKey(),
+  title: text('title').notNull(),
+  description: text('description'),
+  priority: varchar('priority', { length: 10 }).notNull(), // 'high', 'medium', 'low'
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: タスクID（自動採番）</li>
+    <li><code>title</code>: タスク名（必須）</li>
+    <li><code>description</code>: タスクの説明（任意）</li>
+    <li><code>priority</code>: 優先度（'high'、'medium'、'low' のいずれか）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>このコマンドが完了すると、PostgreSQL上に tasks テーブルが作成されます。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. CASE式を利用したORDER BY句の指定</strong><br>
+    <code>tasks</code> テーブルから全てのタスクを取得し、<b>優先度（<code>priority</code>）を 'high' → 'medium' → 'low' の順に並べ</b>てください。カラムの値をそのまま使うのではなく、CASE式で優先度順序を定義してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { asc, sql } from 'drizzle-orm';
+import { tasks } from './schema'; // schema.ts からtasks をインポート
+
+const result = await db.select()
+  .from(tasks)
+  .orderBy(
+    asc(sql&lt;number&gt;`
+      CASE 
+        WHEN ${tasks.priority} = 'high' THEN 0
+        WHEN ${tasks.priority} = 'medium' THEN 1
+        WHEN ${tasks.priority} = 'low' THEN 2
+        ELSE 3
+      END
+    `)
+  );</code></pre>
+        <p>解説：<code>CASE</code> 式で優先度を数値に変換することで、カスタムな並べ替え順序を定義できます。'high' を 0、'medium' を 1、'low' を 2 とすることで、昇順ソートで目的の優先度順になります。このアプローチは、複雑なソート条件に対応する際に有効です。</p>
+    </details>
+</div>
+
+<h2>LIMIT と OFFSET</h2>
+
+<p>大量のデータを含むテーブルから、一度にすべてのレコードを取得することは、メモリ消費が大きく、ネットワークトラフィックも増加するため、アプリケーションのパフォーマンスを悪化させます。このような場合、SQL の <code>LIMIT</code> 句で取得件数を制限し、<code>OFFSET</code> 句で取得開始位置をずらすことで、必要なデータだけを効率的に取得できます。特に Webアプリケーションのページネーション実装や、大規模データセットの処理において、これらの機能は非常に重要です。</p>
+
+<h3>基本的なLIMIT の使い方（取得件数の制限）</h3>
+<p><code>LIMIT</code> 句を使うことで、クエリの結果を指定した件数に制限できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM products
+ORDER BY id ASC
+LIMIT 10;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select()
+  .from(products)
+  .orderBy(asc(products.id))
+  .limit(10);</code></pre>
+    </div>
+</div>
+
+<p>Drizzle では <code>.limit(数値)</code> メソッドを使うだけで、簡単に件数制限ができます。</p>
+
+<h3>OFFSET による取得開始位置の指定</h3>
+<p><code>OFFSET</code> 句を使うことで、最初から何件をスキップするかを指定できます。<code>LIMIT</code> と組み合わせることで、ページネーション機能を実装できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM products
+ORDER BY id ASC
+LIMIT 10 OFFSET 20;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db.select()
+  .from(products)
+  .orderBy(asc(products.id))
+  .limit(10)
+  .offset(20);</code></pre>
+    </div>
+</div>
+
+<p>このクエリは、20件をスキップした後、最初の10件を取得します。ページ番号が <code>page</code> 変数に格納されている場合、<code>offset(page * 10)</code> のように計算することで、各ページの相応するデータを取得できます。</p>
+
+<h3>ランダムに取得（ORDER BY RANDOM()）</h3>
+<p>PostgreSQL の <code>RANDOM()</code> 関数を使うことで、レコードをランダムな順序で取得できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM products
+ORDER BY RANDOM()
+LIMIT 5;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { asc, sql } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(products)
+  .orderBy(sql`RANDOM()`)
+  .limit(5);</code></pre>
+    </div>
+</div>
+
+<p><code>sql</code> タグを使って <code>RANDOM()</code> 関数を <code>orderBy()</code> に渡すことで、ランダムなソートが実現できます。これは、広告のローテーション、推奨商品のシャッフル表示など、様々な場面で役立ちます。</p>
+
+<h3>実験：大量データを挿入してページネーションを検証する</h3>
+
+<p>LIMIT と OFFSET の効果を体感するために、テストデータを大量に挿入し、実際のページネーション処理を実装してみましょう。</p>
+
+<p>まず、<code>src/schema.ts</code> を編集して、テスト用の <code>products</code> テーブルを追加します。</p>
+
+<pre><code class="typescript">// src/schema.ts
+import { pgTable, serial, text, integer, real, timestamp } from 'drizzle-orm/pg-core';
+
+// 既存のテーブル定義...
+
+// テスト用の products テーブル
+export const products = pgTable('products', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  price: real('price').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});</code></pre>
+
+<p>次に、<code>src/index.ts</code> を編集して、1000件のテストデータを挿入し、取得するコードを書きます。</p>
+
+<pre><code class="typescript">// src/index.ts の main() 関数内に追加
+import { products } from './schema';
+import { sql } from 'drizzle-orm';
+
+async function main() {
+  await client.connect();
+  const db = drizzle(client);
+
+  // テストデータの挿入（1000件）
+  console.log("テストデータを作成中...");
+  const testData = Array.from({ length: 1000 }, (_, i) => ({
+    name: `Product ${i + 1}`,
+    price: Math.random() * 10000,
+  }));
+
+  // バッチ挿入（一度に全部挿入）
+  await db.insert(products).values(testData);
+  console.log("1000件のテストデータを挿入しました！");
+
+  async function getPaginatedProducts(pageNum: number, pageSize: number = 10) {
+  const offset = (pageNum - 1) * pageSize;
+  
+  const result = await db.select({
+    id: products.id,
+    name: products.name,
+    price: products.price,
+  })
+  .from(products)
+  .orderBy(asc(products.id))
+  .limit(pageSize)
+  .offset(offset);
+
+  return result;
+}
+
+// ページ1（最初の10件）を取得
+const page1 = await getPaginatedProducts(1);
+console.log(`ページ1: ${page1.length}件取得`);
+console.log(page1);
+
+// ページ50（491〜500件目）を取得
+const page50 = await getPaginatedProducts(50);
+console.log(`ページ50: ${page50.length}件取得`);
+console.log(page50);
+
+  await client.end();
+}</code></pre>
+
+<p>このコードを実行すると、各ページが効率的に取得できることが確認できます。大規模なテーブルから必要な範囲だけをデータベースサーバーで絞り込むため、ネットワークトラフィックとメモリ使用量が大幅に削減されます。</p>
+
+<h3>ランダム取得の実装例</h3>
+
+<p>次に、<code>RANDOM()</code> を使ったランダム取得の実装例です。</p>
+
+<pre><code class="typescript">// ランダムに5件の商品を取得
+const randomProducts = await db.select()
+  .from(products)
+  .orderBy(sql`RANDOM()`)
+  .limit(5);
+
+console.log("ランダムに取得した5件の商品:");
+randomProducts.forEach(p => {
+  console.log(`  ${p.name}: ¥${p.price.toFixed(2)}`);
+});
+</code></pre>
+
+<p>このアプローチは、推奨商品表示、広告ローテーション、A/B テストなど、多くの実務的なシーンで活躍します。ただし注意点として、大規模なテーブルに対して <code>ORDER BY RANDOM()</code> を使う場合、データベースがランダムソートのために全行をメモリに読み込む必要が生じるため、処理が重くなります。そのような場合は、更新頻度に応じて事前に計算したランダムな ID を用いるなど、工夫が必要です。</p>
+
+<h2>WHERE</h2>
+
+<p>SQL の <code>WHERE</code> 句は、テーブルから取得するレコードを「条件」に基づいて絞り込む機能です。データベースから膨大なレコードを取得してからプログラム側でフィルタリングするのではなく、データベース側で条件判定を行うことで、ネットワークトラフィックとメモリ消費を大幅に削減できます。</p>
+
+<h3>基本的なWHERE の使い方</h3>
+
+<p>最もシンプルな WHERE は、単一のカラムを特定の値と比較します。データ型（文字列・数値・日付）によって比較演算子の使い方は同じですが、Drizzle では型安全にこれを記述できます。</p>
+
+<h4>文字列型の比較</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE name = 'Alice';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(eq(users.name, 'Alice'));</code></pre>
+    </div>
+</div>
+
+<h4>数値型の比較</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE age > 20;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { gt } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(gt(users.age, 20));</code></pre>
+    </div>
+</div>
+
+<p>Drizzle では、SQL の比較演算子を関数として提供しています。主な関数としては以下があります：</p>
+<ul>
+    <li><code>eq()</code>: = 等号</li>
+    <li><code>ne()</code>: != または &lt;&gt; 不等号</li>
+    <li><code>gt()</code>: &gt; より大きい</li>
+    <li><code>gte()</code>: &gt;= 以上</li>
+    <li><code>lt()</code>: &lt; より小さい</li>
+    <li><code>lte()</code>: &lt;= 以下</li>
+</ul>
+
+<h4>日付型の比較</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM orders 
+WHERE created_at > '2025-01-01';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { gt } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(orders)
+  .where(gt(orders.createdAt, new Date('2025-01-01')));</code></pre>
+    </div>
+</div>
+
+<h3>3値論理のNOT、AND、ORによる複合条件</h3>
+
+<p>複数の条件を組み合わせるには、<code>and()</code>、<code>or()</code>、<code>not()</code> 関数を使います。</p>
+
+<h4>AND（両方の条件を満たす）</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE age > 20 AND name = 'Bob';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { and, gt, eq } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(
+    and(
+      gt(users.age, 20),
+      eq(users.name, 'Bob')
+    )
+  );</code></pre>
+    </div>
+</div>
+
+<h4>OR（どちらかの条件を満たす）</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE age < 18 OR age > 65;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { or, lt, gt } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(
+    or(
+      lt(users.age, 18),
+      gt(users.age, 65)
+    )
+  );</code></pre>
+    </div>
+</div>
+
+<h4>NOT（条件を否定）と NULL チェック</h4>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE age IS NOT NULL;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { isNotNull } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(isNotNull(users.age));</code></pre>
+    </div>
+</div>
+
+<h3>IN による複数値の比較</h3>
+
+<p><code>IN</code> 句は、指定した複数の値のいずれかに該当するレコードを取得します。単純な <code>OR</code> の連結と比べ、より簡潔で可読性が高いコードが書けます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE id IN (1, 3, 5, 7);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { inArray } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(inArray(users.id, [1, 3, 5, 7]));</code></pre>
+    </div>
+</div>
+
+<h3>LIKE による部分一致</h3>
+
+<p><code>LIKE</code> 句を使うことで、文字列の部分一致を検索できます。<code>%</code> はワイルドカード（任意の文字列）を表します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE name LIKE 'A%';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { like } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(like(users.name, 'A%'));</code></pre>
+    </div>
+</div>
+
+<p>よく使う LIKE パターン：</p>
+<ul>
+    <li><code>'A%'</code>: A で始まる</li>
+    <li><code>'%A'</code>: A で終わる</li>
+    <li><code>'%A%'</code>: A を含む</li>
+    <li><code>'A_B'</code>: A と B の間に1文字（アンダースコアは1文字を表す）</li>
+</ul>
+
+<h3>BETWEEN による範囲指定</h3>
+
+<p><code>BETWEEN</code> 句は、指定した範囲内の値を取得します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM products 
+WHERE price BETWEEN 1000 AND 5000;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { between } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(products)
+  .where(between(products.price, 1000, 5000));</code></pre>
+    </div>
+</div>
+
+<p><code>BETWEEN min AND max</code> は <code>value >= min AND value <= max</code> に相当します。両端の値を含む（包括的な）範囲指定です。</p>
+
+<h3>CASE式を利用したWHERE句の指定</h3>
+
+<p>複雑な条件判定が必要な場合、<code>CASE</code> 式を <code>WHERE</code> 句で使うことで、より柔軟な条件指定ができます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT * FROM users 
+WHERE CASE 
+  WHEN age < 18 THEN 1
+  WHEN age BETWEEN 18 AND 65 THEN 0
+  ELSE 1
+END = 1;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(
+    eq(
+      sql&lt;number&gt;`
+        CASE 
+          WHEN ${users.age} &lt; 18 THEN 1
+          WHEN ${users.age} BETWEEN 18 AND 65 THEN 0
+          ELSE 1
+        END
+      `,
+      1
+    )
+  );</code></pre>
+    </div>
+</div>
+
+<p>このアプローチは、複数の条件を組み合わせた複雑な論理を SQL レベルで実装する際に有効です。例えば、顧客のセグメント分類やリスク評価など、カテゴリー分けが必要な場面で活躍します。</p>
+
+<h2>WHERE 演習問題</h2>
+
+<p>ここまでで学んだ様々なWHERE操作を、実際にDrizzle ORMを使って記述する練習をしましょう。以下の7問に挑戦してください。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. 標準的なWHERE の使い方（特定のカラムでの比較）</strong><br>
+    <code>products</code> テーブルから、価格（<code>price</code>）が 5000 より大きい商品を全て取得してください。生のSQLでは <code>SELECT * FROM products WHERE price > 5000;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { gt } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(products)
+  .where(gt(products.price, 5000));</code></pre>
+        <p>解説：<code>.where()</code> メソッドに <code>gt()</code>（グレーター・ザン）関数を渡すことで、「5000より大きい」という条件を安全に指定できます。比較演算子は型安全であり、カラムのデータ型に合わない値を渡そうとするとTypeScriptエラーになります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. 基本的なWHERE の使い方（値の一致判定）</strong><br>
+    <code>users</code> テーブルから、ステータス（<code>status</code>）が 'active' に一致するユーザーを全て取得してください。生のSQLでは <code>SELECT * FROM users WHERE status = 'active';</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(eq(users.status, 'active'));</code></pre>
+        <p>解説：<code>eq()</code>（イコール）関数は SQL の <code>=</code> 演算子に対応し、値の完全一致を判定します。文字列、数値、日付など、あらゆるデータ型に対して同じ関数を使用でき、Drizzle が型チェックを行うため安全です。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. 3値論理のAND と OR による複合条件</strong><br>
+    <code>employees</code> テーブルから、<b>給与（<code>salary</code>）が 30000 以上 かつ 部門（<code>department</code>）が 'Sales' であるか、部門が 'Management' である従業員</b>を取得してください。生のSQLでは <code>SELECT * FROM employees WHERE (salary >= 30000 AND department = 'Sales') OR department = 'Management';</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { and, or, gte, eq } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(employees)
+  .where(
+    or(
+      and(
+        gte(employees.salary, 30000),
+        eq(employees.department, 'Sales')
+      ),
+      eq(employees.department, 'Management')
+    )
+  );</code></pre>
+        <p>解説：複数の条件を <code>and()</code> で結合し、その結果をさらに <code>or()</code> で別の条件と結合しています。関数の入れ子構造が SQL の括弧 <code>()</code> に対応し、条件の優先度を制御できます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. IN による複数値の比較</strong><br>
+    <code>orders</code> テーブルから、ステータス（<code>status</code>）が 'pending'、'processing'、'shipped のいずれか' に該当する注文を全て取得してください。生のSQLでは <code>SELECT * FROM orders WHERE status IN ('pending', 'processing', 'shipped');</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { inArray } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(orders)
+  .where(inArray(orders.status, ['pending', 'processing', 'shipped']));</code></pre>
+        <p>解説：<code>inArray()</code> は SQL の <code>IN</code> に対応し、複数の値のいずれかに該当するデータを取得します。<code>or(eq(...), eq(...), eq(...))</code> を3つ書く代わりに、配列で値をまとめて指定できるため、コードがシンプルで読みやすくなります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q5. LIKE による部分一致</strong><br>
+    <code>products</code> テーブルから、商品名（<code>name</code>）が 'Smart' を含む全ての商品を取得してください。生のSQLでは <code>SELECT * FROM products WHERE name LIKE '%Smart%';</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { like } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(products)
+  .where(like(products.name, '%Smart%'));</code></pre>
+        <p>解説：<code>like()</code> は SQL の <code>LIKE</code> 演算子に対応し、文字列の部分一致を検索します。<code>'%Smart%'</code> は「前後に任意の文字（ワイルドカード）+ Smart + 前後に任意の文字」という意味で、'Smart' を含む全ての文字列に該当します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q6. BETWEEN による範囲指定</strong><br>
+    <code>orders</code> テーブルから、注文額（<code>amount</code>）が 1000 以上 10000 以下の注文を全て取得してください。生のSQLでは <code>SELECT * FROM orders WHERE amount BETWEEN 1000 AND 10000;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { between } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(orders)
+  .where(between(orders.amount, 1000, 10000));</code></pre>
+        <p>解説：<code>between()</code> は SQL の <code>BETWEEN min AND max</code> に対応し、指定した範囲内のデータを取得します。最小値も最大値も含まれます（包括的な範囲）。<code>gte(1000)</code> と <code>lte(10000)</code> を <code>and()</code> で結合することと同義です。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q7. CASE式を利用したWHERE句の指定</strong><br>
+    <code>users</code> テーブルから、<b>年齢層（<code>age</code>）に基づいて「高リスク」（18歳未満 または 65歳以上）に分類されるユーザーを全て取得</b>してください。CASE式を使って、年齢層それぞれに数値を割り当て、その結果が「1」（高リスク）に該当するデータを抽出してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+const result = await db.select()
+  .from(users)
+  .where(
+    eq(
+      sql&lt;number&gt;`
+        CASE 
+          WHEN ${users.age} &lt; 18 THEN 1
+          WHEN ${users.age} &gt;= 65 THEN 1
+          ELSE 0
+        END
+      `,
+      1
+    )
+  );</code></pre>
+        <p>解説：<code>CASE</code> 式で「18歳未満なら1、65歳以上なら1、それ以外は0」と定義し、その結果が「1」に等しいレコードを抽出しています。ビジネスロジックを SQL レベルで実装することで、複雑なカテゴリー分類や判定ロジックをデータベースサーバーで処理でき、処理効率が向上します。</p>
+    </details>
+</div>
+
+<h2>集約関数（Aggregate Functions）</h2>
+
+<p>集約関数は、複数のレコードに対して統計計算（合計、平均、個数のカウントなど）を行う SQL の機能です。例えば、売上の合計、商品の平均価格、顧客数など、データ全体の要約統計量を素早く計算できます。これらの計算をプログラム側で行わず、データベースサーバーで実行することで、ネットワークトラフィックとプログラムのメモリ消費を大幅に削減できます。</p>
+
+<h3>COUNT（レコード数のカウント）</h3>
+
+<p><code>COUNT()</code> 関数は、指定したカラムの非NULL値の個数をカウントします。<code>COUNT(*)</code> を使うと、すべてのレコード数を返します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT COUNT(*) FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  totalOrders: count(),
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<p>特定のカラムの非NULL値のみをカウントしたい場合、<code>COUNT(columnName)</code> と指定します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT COUNT(phone) FROM users;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  usersWithPhone: count(users.phone),
+}).from(users);</code></pre>
+    </div>
+</div>
+
+<h3>SUM（合計の計算）</h3>
+
+<p><code>SUM()</code> 関数は、指定したカラムの値の合計を計算します。NULL値は無視されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT SUM(amount) FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sum } from 'drizzle-orm';
+
+const result = await db.select({
+  totalAmount: sum(orders.amount),
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<p>NULL値を特定の値（例：0）に置き換えてから合計を求める場合、<code>COALESCE()</code> を使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT SUM(COALESCE(discount, 0)) FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sum, sql } from 'drizzle-orm';
+
+const result = await db.select({
+  totalDiscount: sum(sql&lt;number&gt;`COALESCE(${orders.discount}, 0)`),
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h3>AVG（平均値の計算）</h3>
+
+<h4>reviewsテーブルの定義</h4>
+
+<p>AVG関数を使う例として、<code>reviews</code> テーブルを用います。このテーブルは、商品レビュー機能で使用される想定です。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, text, timestamp } from 'drizzle-orm/pg-core';
+
+export const reviews = pgTable('reviews', {
+  id: serial('id').primaryKey(),
+  productId: integer('product_id').notNull(),
+  userId: integer('user_id').notNull(),
+  rating: integer('rating'), // 1-5のスコア（NULL可能）
+  comment: text('comment'),
+  createdAt: timestamp('created_at').defaultNow(),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: レビューID（自動採番）</li>
+    <li><code>productId</code>: レビュー対象の商品ID</li>
+    <li><code>userId</code>: レビューを書いたユーザーID</li>
+    <li><code>rating</code>: 評価スコア（1〜5等、任意）</li>
+    <li><code>comment</code>: レビューコメント（任意）</li>
+    <li><code>createdAt</code>: レビュー作成日時</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<h4>AVG関数での使用例</h4>
+
+<p><code>AVG()</code> 関数は、指定したカラムの値の平均を計算します。NULL値は無視されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT AVG(price) FROM products;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { avg } from 'drizzle-orm';
+
+const result = await db.select({
+  averagePrice: avg(products.price),
+}).from(products);</code></pre>
+    </div>
+</div>
+
+<p>NULL値を特定の値に置き換えてから平均を求める場合、SUM と同様に <code>COALESCE()</code> を使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT AVG(COALESCE(rating, 3)) FROM reviews;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { avg, sql } from 'drizzle-orm';
+import { reviews } from './schema'; // schema.ts からreviews をインポート
+
+const result = await db.select({
+  averageRating: avg(sql&lt;number&gt;`COALESCE(${reviews.rating}, 3)`),
+}).from(reviews);</code></pre>
+    </div>
+</div>
+
+<p>解説：SUM と同様に <code>COALESCE()</code> を使うことで、NULL値を指定した値に置き換えてから平均を計算します。この例では、評価が未入力のレビューは3（中立）として扱われます。</p>
+
+<h3>MAX（最大値の取得）</h3>
+
+<p><code>MAX()</code> 関数は、指定したカラムの最大値を返します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT MAX(salary) FROM employees;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { max } from 'drizzle-orm';
+
+const result = await db.select({
+  maxSalary: max(employees.salary),
+}).from(employees);</code></pre>
+    </div>
+</div>
+
+<h3>MIN（最小値の取得）</h3>
+
+<p><code>MIN()</code> 関数は、指定したカラムの最小値を返します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT MIN(price) FROM products;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { min } from 'drizzle-orm';
+
+const result = await db.select({
+  minPrice: min(products.price),
+}).from(products);</code></pre>
+    </div>
+</div>
+
+<h3>文字列の長さ（CHAR_LENGTH または LENGTH）</h3>
+
+<p>文字列型のカラムに対して、その文字列の長さを計算できます。PostgreSQL では <code>CHAR_LENGTH()</code> または <code>LENGTH()</code> が使用できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT name, CHAR_LENGTH(name) AS nameLength 
+FROM users;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  name: users.name,
+  nameLength: sql&lt;number&gt;`CHAR_LENGTH(${users.name})`,
+}).from(users);</code></pre>
+    </div>
+</div>
+
+<p>複数の集約関数を同時に使用する場合、1つの <code>.select()</code> の中にオブジェクトの複数プロパティとして記述できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  COUNT(*) AS totalOrders,
+  SUM(amount) AS totalAmount,
+  AVG(amount) AS avgAmount,
+  MAX(amount) AS maxAmount,
+  MIN(amount) AS minAmount
+FROM orders;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count, sum, avg, max, min } from 'drizzle-orm';
+
+const result = await db.select({
+  totalOrders: count(),
+  totalAmount: sum(orders.amount),
+  avgAmount: avg(orders.amount),
+  maxAmount: max(orders.amount),
+  minAmount: min(orders.amount),
+}).from(orders);</code></pre>
+    </div>
+</div>
+
+<h2>集約関数 演習問題</h2>
+
+<p>ここまでで学んだ様々な集約関数を、実際にDrizzle ORMを使って記述する練習をしましょう。以下の6問に挑戦してください。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. COUNT による全レコード数のカウント</strong><br>
+    <code>orders</code> テーブルから、全注文の個数を取得してください。結果を <code>totalOrders</code> という変数名で取得してください。生のSQLでは <code>SELECT COUNT(*) FROM orders;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  totalOrders: count(),
+}).from(orders);</code></pre>
+        <p>解説：<code>count()</code> の引数を指定しない場合、SQL の <code>COUNT(*)</code> に対応し、全レコード数を返します。NULL値のチェックは行わず、すべてのレコードをカウントします。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. COUNT（特定カラムの非NULL値のカウント）</strong><br>
+    <code>users</code> テーブルから、電話番号（<code>phone</code>）が登録されているユーザーの数を取得してください。結果を <code>usersWithPhone</code> という変数名で取得してください。NULL値を除外してカウントしてください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  usersWithPhone: count(users.phone),
+}).from(users);</code></pre>
+        <p>解説：<code>count(column)</code> にカラムを指定すると、その カラムの非NULL値のみをカウントします。phone が NULL であるユーザーは除外されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. SUM による合計計算と NULLの置き換え</strong><br>
+    <code>orders</code> テーブルから、割引額（<code>discount</code>）の合計を計算してください。ただし、割引額が NULL の場合は 0 として扱ってください。結果を <code>totalDiscount</code> という変数名で取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sum, sql } from 'drizzle-orm';
+
+const result = await db.select({
+  totalDiscount: sum(sql&lt;number&gt;`COALESCE(${orders.discount}, 0)`),
+}).from(orders);</code></pre>
+        <p>解説：<code>COALESCE()</code> 関数を使うことで、NULL値を0に置き換えてから合計を計算します。これにより、割引が設定されなかった注文でも統計計算に含められます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. AVG による平均計算と NULLの置き換え</strong><br>
+    <code>reviews</code> テーブルから、評価（<code>rating</code>）の平均値を計算してください。ただし、評価が NULL の場合は 3 （中立）として扱ってください。結果を <code>averageRating</code> という変数名で取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { avg, sql } from 'drizzle-orm';
+import { reviews } from './schema'; // schema.ts からreviews をインポート
+
+const result = await db.select({
+  averageRating: avg(sql&lt;number&gt;`COALESCE(${reviews.rating}, 3)`),
+}).from(reviews);</code></pre>
+        <p>解説：SUM と同様に <code>COALESCE()</code> を使うことで、NULL値を指定した値に置き換えてから平均を計算します。これにより、評価が未入力のレビューもデータセットに含められます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q5. MAX による最大値の取得</strong><br>
+    <code>employees</code> テーブルから、最も給与の高い従業員の給与を取得してください。結果を <code>maxSalary</code> という変数名で取得してください。生のSQLでは <code>SELECT MAX(salary) FROM employees;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { max } from 'drizzle-orm';
+
+const result = await db.select({
+  maxSalary: max(employees.salary),
+}).from(employees);</code></pre>
+        <p>解説：<code>max()</code> 関数は、指定したカラムの最大値を返します。ウィンドウ関数と異なり、最大値を持つレコード全体を取得するのではなく、その値だけを1行で返します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q6. MIN による最小値の取得</strong><br>
+    <code>products</code> テーブルから、最も安い商品の価格を取得してください。結果を <code>minPrice</code> という変数名で取得してください。生のSQLでは <code>SELECT MIN(price) FROM products;</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { min } from 'drizzle-orm';
+
+const result = await db.select({
+  minPrice: min(products.price),
+}).from(products);</code></pre>
+        <p>解説：<code>min()</code> 関数は、指定したカラムの最小値を返します。MAX と同様に、最小値を持つレコード全体ではなく、その値だけを1行で返します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q7. CHAR_LENGTH による文字列長の計算</strong><br>
+    <code>users</code> テーブルから、ユーザーの名前（<code>name</code>）とその名前の文字数を取得してください。名前と文字数をそれぞれ <code>name</code> と <code>nameLength</code> という変数名で取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.select({
+  name: users.name,
+  nameLength: sql&lt;number&gt;`CHAR_LENGTH(${users.name})`,
+}).from(users);</code></pre>
+        <p>解説：<code>CHAR_LENGTH()</code> は文字列の長さ（文字数）を返します。PostgreSQL では <code>LENGTH()</code> も同じ意味で使用できます。集約関数ではなく、単一行ごとの演算で、各ユーザーの名前の長さが返されます。</p>
+    </details>
+</div>
+
+<h2>GROUP BY</h2>
+
+<p>SQL の <code>GROUP BY</code> 句は、テーブルのレコードを指定したカラムの値によって「グループ分け」し、各グループごとに集約関数（COUNT、SUM、AVGなど）を適用する機能です。例えば、商品を「カテゴリー」でグループ分けして、カテゴリー別の売上合計を計算するといった用途に用いられます。</p>
+
+<h3>集約キー以外はSELECTに指定できない（GROUP BY の厳密な制約）</h3>
+
+<p>GROUP BY を使う際の最も重要なルールは、<b>SELECT 句に指定できるカラムは「GROUP BY 句に指定したカラム」と「集約関数（COUNT、SUM など）のみ」</b>ということです。これは、グループ化されたデータでは、グループキー以外のカラムには複数の異なる値が存在する可能性があり、どの値を返すべきかが不明確になるためです。</p>
+
+<pre><code class="sql">-- ❌ 間違い：department でグループ化しているのに、name を指定している
+SELECT department, name, COUNT(*) FROM employees GROUP BY department;
+
+-- ✅ 正しい：GROUP BY で指定したカラムと集約関数だけを SELECT
+SELECT department, COUNT(*) FROM employees GROUP BY department;</code></pre>
+
+<h3>単一の集約キーによるグループ化</h3>
+
+<p>最も基本的なグループ化では、1つのカラムでレコードを分類します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT category, COUNT(*) 
+FROM products
+GROUP BY category;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  category: products.category,
+  productCount: count(),
+})
+  .from(products)
+  .groupBy(products.category);</code></pre>
+    </div>
+</div>
+
+<h3>複数の集約キーを指定する</h3>
+
+<p>複数のカラムでグループ化することで、より細かいグループに分類できます。例えば、「部門×給与レベル」のように2つの軸で分類することで、より詳細な分析が可能になります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT department, status, COUNT(*), AVG(salary)
+FROM employees
+GROUP BY department, status;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count, avg } from 'drizzle-orm';
+
+const result = await db.select({
+  department: employees.department,
+  status: employees.status,
+  employeeCount: count(),
+  avgSalary: avg(employees.salary),
+})
+  .from(employees)
+  .groupBy(employees.department, employees.status);</code></pre>
+    </div>
+</div>
+
+<h3>ROLLUP による小計と全体計の自動生成</h3>
+
+<p><code>ROLLUP</code> は、GROUP BY の拡張機能で、グループごとの小計に加えて、全体計を自動的に生成します。例えば月別の売上と、全月の合計売上を同時に取得できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT year, month, SUM(amount)
+FROM orders
+GROUP BY ROLLUP(year, month);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sum, sql } from 'drizzle-orm';
+
+const result = await db.select({
+  year: orders.year,
+  month: orders.month,
+  totalAmount: sum(orders.amount),
+})
+  .from(orders)
+  .groupBy(sql`ROLLUP(${orders.year}, ${orders.month})`);</code></pre>
+    </div>
+</div>
+
+<h3>GROUP BY に CASE を使う（ビジネスロジックに基づくグループ化）</h3>
+
+<p>CASE 式を GROUP BY と組み合わせることで、カラムの値をカテゴリーに変換してからグループ化できます。例えば、年齢を「若年層」「壮年層」「高齢層」に分類してからグループ化する場合などです。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  CASE 
+    WHEN age < 30 THEN '20s'
+    WHEN age < 50 THEN '30-40s'
+    ELSE '50+'
+  END AS ageGroup,
+  COUNT(*)
+FROM users
+GROUP BY ageGroup;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count, sql } from 'drizzle-orm';
+
+const ageGroupExpr = sql&lt;string&gt;`
+  CASE 
+    WHEN ${users.age} &lt; 30 THEN '20s'
+    WHEN ${users.age} &lt; 50 THEN '30-40s'
+    ELSE '50+'
+  END
+`;
+
+const result = await db.select({
+  ageGroup: ageGroupExpr,
+  userCount: count(),
+})
+  .from(users)
+  .groupBy(ageGroupExpr);</code></pre>
+    </div>
+</div>
+
+<h3>DATE_TRUNC を使って時間軸に沿って集計処理を行う</h3>
+
+<p><code>DATE_TRUNC()</code> は日時型のカラムを指定した単位（年、月、日、時など）に切り捨てる関数です。これを使うことで、時系列データを時間単位でグループ化できます。例えば、日次売上、月次売上などの時系列分析が可能になります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  DATE_TRUNC('month', created_at) AS month,
+  SUM(amount)
+FROM orders
+GROUP BY DATE_TRUNC('month', created_at);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sum, sql } from 'drizzle-orm';
+
+const monthExpr = sql&lt;Date&gt;`DATE_TRUNC('month', ${orders.createdAt})`;
+
+const result = await db.select({
+  month: monthExpr,
+  totalAmount: sum(orders.amount),
+})
+  .from(orders)
+  .groupBy(monthExpr);</code></pre>
+    </div>
+</div>
+
+<p><code>DATE_TRUNC()</code> の指定可能な単位：</p>
+<ul>
+    <li><code>'year'</code>: 年単位</li>
+    <li><code>'month'</code>: 月単位</li>
+    <li><code>'week'</code>: 週単位</li>
+    <li><code>'day'</code>: 日単位</li>
+    <li><code>'hour'</code>: 時単位</li>
+    <li><code>'minute'</code>: 分単位</li>
+</ul>
+
+<h2>GROUP BY 演習問題</h2>
+
+<p>ここまでで学んだ様々なGROUP BY操作を、実際にDrizzle ORMを使って記述する練習をしましょう。以下の5問に挑戦してください。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. 基本的なGROUP BY（単一の集約キー）</strong><br>
+    <code>orders</code> テーブルから、各ステータス（<code>status</code>）ごとの注文数を取得してください。結果を <code>status</code> と <code>orderCount</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count } from 'drizzle-orm';
+
+const result = await db.select({
+  status: orders.status,
+  orderCount: count(),
+})
+  .from(orders)
+  .groupBy(orders.status);</code></pre>
+        <p>解説：<code>.groupBy()</code> に <code>orders.status</code> を指定することで、ステータスごとにレコードをグループ化します。SELECT に指定できるのは、グループキー（status）と集約関数（count()）だけです。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. 複数の集約キーを指定する</strong><br>
+    <code>employees</code> テーブルから、部門（<code>department</code>）と給与レベル（<code>salaryLevel</code>）ごとの従業員数と平均給与を取得してください。結果を <code>department</code>、<code>salaryLevel</code>、<code>employeeCount</code>、<code>avgSalary</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count, avg } from 'drizzle-orm';
+
+const result = await db.select({
+  department: employees.department,
+  salaryLevel: employees.salaryLevel,
+  employeeCount: count(),
+  avgSalary: avg(employees.salary),
+})
+  .from(employees)
+  .groupBy(employees.department, employees.salaryLevel);</code></pre>
+        <p>解説：<code>.groupBy()</code> に複数のカラムを指定することで、それらの組み合わせごとにグループ化します。SELECT に指定できるのは、両方のグループキーと集約関数だけです。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. ROLLUP による小計・全体計の生成</strong><br>
+    <code>orders</code> テーブルから、年（<code>year</code>）と月（<code>month</code>）ごとの売上合計を取得してください。ただし、年ごとの小計と全体計も同時に返すようにしてください。結果を <code>year</code>、<code>month</code>、<code>totalAmount</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sum, sql } from 'drizzle-orm';
+
+const result = await db.select({
+  year: orders.year,
+  month: orders.month,
+  totalAmount: sum(orders.amount),
+})
+  .from(orders)
+  .groupBy(sql`ROLLUP(${orders.year}, ${orders.month})`);</code></pre>
+        <p>解説：<code>ROLLUP(year, month)</code> を使うことで、月別の集計に加えて年別の小計と全体計が自動的に生成されます。month が NULL の行は年ごとの小計、year と month の両方が NULL の行は全体計を表します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. GROUP BY に CASE を使う</strong><br>
+    <code>products</code> テーブルから、価格範囲（<code>price</code>）ごとの商品数と平均価格を取得してください。ただし、価格を「安い（1000未満）」「中程度（1000以上5000未満）」「高い（5000以上）」に分類してからグループ化してください。結果を <code>priceRange</code>、<code>productCount</code>、<code>avgPrice</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count, avg, sql } from 'drizzle-orm';
+
+const priceRangeExpr = sql&lt;string&gt;`
+  CASE 
+    WHEN ${products.price} &lt; 1000 THEN '安い'
+    WHEN ${products.price} &lt; 5000 THEN '中程度'
+    ELSE '高い'
+  END
+`;
+
+const result = await db.select({
+  priceRange: priceRangeExpr,
+  productCount: count(),
+  avgPrice: avg(products.price),
+})
+  .from(products)
+  .groupBy(priceRangeExpr);</code></pre>
+        <p>解説：CASE 式を変数に格納してから、SELECT と groupBy の両方で使用することが重要です。これにより、CASE の計算結果を基準にグループ化できます。ビジネスロジックに基づいた複雑なグループ分けが可能になります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q5. DATE_TRUNC を使った時間軸での集計</strong><br>
+    <code>orders</code> テーブルから、月ごと（<code>created_at</code> を月単位で切り捨て）の売上合計と注文数を取得してください。結果を <code>month</code>、<code>totalAmount</code>、<code>orderCount</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql, sum, count } from 'drizzle-orm';
+
+const monthExpr = sql&lt;Date&gt;`DATE_TRUNC('month', ${orders.createdAt})`;
+
+const result = await db.select({
+  month: monthExpr,
+  totalAmount: sum(orders.amount),
+  orderCount: count(),
+})
+  .from(orders)
+  .groupBy(monthExpr);</code></pre>
+        <p>解説：<code>DATE_TRUNC('month', ...)</code> で日時を月単位に切り捨てることで、月ごとの売上を集計できます。日時データを時間軸で分析する際の基本的なテクニックです。orderCount の代わりに sum や avg を使うことで、より複雑な時系列分析も可能になります。</p>
+    </details>
+</div>
+
+<h2>HAVING</h2>
+
+<p>SQL の <code>HAVING</code> 句は、GROUP BY でグループ化した後に、集約関数の結果に基づいて「グループを絞り込む」機能です。一見すると WHERE に似ていますが、<b>WHERE はグループ化前に個別レコードを絞り込み、HAVING はグループ化後に集計結果を絞り込む</b>という重要な違いがあります。</p>
+
+<h3>WHERE と HAVING の違い</h3>
+
+<p>この違いを理解することは SQL を使いこなすために非常に重要です。</p>
+
+<table class="comparison-table">
+    <thead>
+        <tr>
+            <th>WHERE</th>
+            <th>HAVING</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>グループ化<b>前</b>にレコードを絞り込む</td>
+            <td>グループ化<b>後</b>にグループを絞り込む</td>
+        </tr>
+        <tr>
+            <td>個別カラムの値で条件指定</td>
+            <td>集約関数（COUNT、SUM など）の結果で条件指定</td>
+        </tr>
+        <tr>
+            <td>例：年齢 > 20 のユーザーだけ集計</td>
+            <td>例：従業員数が10人以上の部門だけ表示</td>
+        </tr>
+    </tbody>
+</table>
+
+<h3>WHERE と HAVING の実装例</h3>
+
+<p>同じ「部門ごとの従業員数」を取得する場合でも、WHERE と HAVING で結果が変わります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【WHERE を使う場合】</b>
+        <pre><code class="sql">-- グループ化前に：年収が50000以上のみ
+SELECT department, COUNT(*)
+FROM employees
+WHERE salary >= 50000
+GROUP BY department;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【HAVING を使う場合】</b>
+        <pre><code class="sql">-- グループ化後に：従業員数が5人以上
+SELECT department, COUNT(*)
+FROM employees
+GROUP BY department
+HAVING COUNT(*) >= 5;</code></pre>
+    </div>
+</div>
+
+<h3>Drizzle ORM での HAVING の実装</h3>
+
+<p>Drizzle では <code>.having()</code> メソッドを使用します。WHERE と同じ条件関数を使用できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT department, COUNT(*) AS empCount
+FROM employees
+GROUP BY department
+HAVING COUNT(*) >= 5;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count, gte } from 'drizzle-orm';
+
+const result = await db.select({
+  department: employees.department,
+  empCount: count(),
+})
+  .from(employees)
+  .groupBy(employees.department)
+  .having(gte(count(), 5));</code></pre>
+    </div>
+</div>
+
+<p>重要なポイント：WHERE と HAVING を同時に使う場合、WHERE でグループ化前にレコードを絞り込むことで、データベースの処理が効率化されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT department, COUNT(*) AS empCount
+FROM employees
+WHERE salary >= 50000
+GROUP BY department
+HAVING COUNT(*) >= 5;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { count, gte } from 'drizzle-orm';
+
+const result = await db.select({
+  department: employees.department,
+  empCount: count(),
+})
+  .from(employees)
+  .where(gte(employees.salary, 50000))
+  .groupBy(employees.department)
+  .having(gte(count(), 5));</code></pre>
+    </div>
+</div>
+
+<h2>HAVING 演習問題</h2>
+
+<p>WHERE と HAVING の違いを理解するため、2つの問題を用意しました。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. </strong><br>
+    <code>orders</code> テーブルから、顧客（<code>customerId</code>）ごとの注文数を取得してください。ただし、<b>注文日付（<code>createdAt</code>）が2025年01月01日以降の注文のみをカウント</b>してください。結果を <code>customerId</code> と <code>orderCount</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count, gte } from 'drizzle-orm';
+
+const result = await db.select({
+  customerId: orders.customerId,
+  orderCount: count(),
+})
+  .from(orders)
+  .where(gte(orders.createdAt, new Date('2025-01-01')))
+  .groupBy(orders.customerId);</code></pre>
+        <p>解説：WHERE を使う場合の目的は、<b>グループ化する前に</b>不要なレコードを除外することです。この例では、2025年01月01日より前の古い注文はカウント対象から外されます。WHERE を使うことで、データベースが処理する行数が減り、パフォーマンスが向上します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. </strong><br>
+    <code>orders</code> テーブルから、顧客（<code>customerId</code>）ごとの注文数を取得してください。ただし、<b>同じ顧客からの注文数が3件以上</b>の顧客のみを表示してください。結果を <code>customerId</code> と <code>orderCount</code> として取得してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { count, gte } from 'drizzle-orm';
+
+const result = await db.select({
+  customerId: orders.customerId,
+  orderCount: count(),
+})
+  .from(orders)
+  .groupBy(orders.customerId)
+  .having(gte(count(), 3));</code></pre>
+        <p>解説：HAVING を使う場合の目的は、<b>グループ化した後に</b>集計結果で条件指定することです。この例では、すべての顧客の注文数を集計してから、3件以上の注文がある顧客のみをフィルタリングしています。集約関数の結果を条件として使う場合は、WHERE ではなく HAVING を使う必要があります。</p>
+    </details>
+</div>
+
+
+
+<h2>サブクエリ（副問い合わせ）</h2>
+
+<p>サブクエリ（副問い合わせ）とは、SELECT文の中に別のSELECT文を埋め込んだ構造です。大きなSELECT文の中に、小さなSELECT文が含まれている形になります。サブクエリを使うことで、複雑な条件を表現したり、集計結果を条件として使ったりすることができます。Drizzle ORMでサブクエリを使う場合、<code>.subQuery()</code> メソッドを使って定義します。</p>
+
+<h3>WHERE句でのサブクエリ使用</h3>
+
+<p>WHERE句でサブクエリを使う場合、サブクエリの結果は<b>スカラー値</b>（単一の行、単一のカラム）である必要があります。例えば、「平均価格より高い商品」といった条件を表現できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT id, name, price
+FROM products
+WHERE price > (
+  SELECT AVG(price) FROM products
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const avgPrice = db
+  .select({ avg: sql`AVG(${products.price})` })
+  .from(products);
+
+const result = await db
+  .select({ id: products.id, name: products.name, price: products.price })
+  .from(products)
+  .where(sql`${products.price} > (${avgPrice})`);</code></pre>
+    </div>
+</div>
+
+<p>このクエリは、すべての商品の平均価格を計算し、その平均価格より高い商品だけを取得します。</p>
+
+<h3>SELECT句でのサブクエリ使用</h3>
+
+<p>SELECT句でサブクエリを使う場合、各行に対してサブクエリの結果を新しいカラムとして追加できます。例えば、各顧客について「その顧客の注文総額」を同時に取得するといった使い方ができます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT 
+  c.id,
+  c.name,
+  (SELECT COUNT(*) FROM orders WHERE customerId = c.id) AS order_count
+FROM customers c;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const orderCountSubquery = db
+  .select({ count: sql`COUNT(*)` })
+  .from(orders)
+  .where(sql`${orders.customerId} = ${customers.id}`);
+
+const result = await db
+  .select({
+    id: customers.id,
+    name: customers.name,
+    orderCount: sql`(${orderCountSubquery})`,
+  })
+  .from(customers);</code></pre>
+    </div>
+</div>
+
+<p>このクエリは、各顧客の基本情報（id、name）と、その顧客の注文数を同時に取得します。</p>
+
+<h3>複数カラムの返却はエラー</h3>
+
+<p>サブクエリを使う際、特に WHERE や SELECT で条件値として使う場合、<b>必ず単一のカラムのみを返す必要があります</b>。複数のカラムを返そうとするとエラーが発生します。</p>
+
+<div class="code-comparison">
+    <div class="error-block">
+        <b>【エラー例】</b>
+        <pre><code class="sql">-- ❌ これはエラーになります
+SELECT * FROM products
+WHERE (id, price) IN (
+  SELECT id, price FROM orders  -- 複数カラムを返している！
+);</code></pre>
+    </div>
+    <div class="success-block">
+        <b>【正しい例】</b>
+        <pre><code class="sql">-- ✅ 単一カラムのみを返す
+SELECT * FROM products
+WHERE id IN (
+  SELECT id FROM orders  -- 単一カラムのみ！
+);</code></pre>
+    </div>
+</div>
+
+<p>サブクエリを複数カラムで使いたい場合は、サブクエリではなく<b>JOIN</b>を使うべきです。JOINを使うことで、より効率的に複数テーブルの結合ができます。</p>
+
+<h2>サブクエリ 演習問題</h2>
+
+<p>WHERE句と SELECT句でのサブクエリの使い方を実践して学びましょう。</p>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. WHERE句でのサブクエリ</strong><br>
+    <code>products</code> テーブルから、<b>在庫数（stock）が平均在庫数より多い商品</b>をすべて取得してください。結果として、<code>id</code>、<code>name</code>、<code>stock</code> を表示してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const avgStock = db
+  .select({ avg: sql`AVG(${products.stock})` })
+  .from(products);
+
+const result = await db
+  .select({
+    id: products.id,
+    name: products.name,
+    stock: products.stock,
+  })
+  .from(products)
+  .where(sql`${products.stock} > (${avgStock})`);</code></pre>
+        <p>解説：WHERE句のサブクエリを使うことで、テーブル全体の平均在庫数を動的に計算し、その結果を比較条件として使用できます。サブクエリは <code>AVG(stock)</code> という単一の値を返すため、WHERE句で直接比較できます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. SELECT句でのサブクエリ</strong><br>
+    <code>customers</code> テーブルから、各顧客の情報（<code>id</code>、<code>name</code>）と、<b>その顧客の合計購入額</b>を取得してください。合計購入額は、<code>orders</code> テーブルの <code>amount</code> カラムを顧客ごとに合計したものです。結果を <code>id</code>、<code>name</code>、<code>totalAmount</code> として表示してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    id: customers.id,
+    name: customers.name,
+    totalAmount: sql`(
+      SELECT COALESCE(SUM(${orders.amount}), 0)
+      FROM ${orders}
+      WHERE ${orders.customerId} = ${customers.id}
+    )`,
+  })
+  .from(customers);</code></pre>
+        <p>解説：SELECT句のサブクエリを使うことで、外側のクエリの各行に対して、内側のサブクエリが実行されます。この例では、各顧客に対して、その顧客のすべての注文の合計額を計算しています。<code>COALESCE(SUM(...), 0)</code> を使うことで、注文がない顧客の場合も 0 として表示されます。</p>
+    </details>
+</div>
+
+<h2>トランザクション（TRANSACTION）</h2>
+
+<p>トランザクション（transaction）は、複数のデータベース操作をまとめて、「すべて成功するか、すべて失敗するか」の2択にする仕組みです。例えば、顧客の口座から1,000円を引き出し、別の口座に1,000円を入金する2つの操作を行う場合、片方だけが成功してしまっては整合性が失われます。トランザクション内で両方の操作を行うことで、「両方成功」か「両方失敗」のいずれかが保証されます。</p>
+
+<h3>accountsテーブルの定義</h3>
+
+<p>トランザクションの例で使用する <code>accounts</code> テーブルの定義です。このテーブルは、銀行振込などの複数操作が必要な処理における一貫性を保証するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, varchar, numeric } from 'drizzle-orm/pg-core';
+
+export const accounts = pgTable('accounts', {
+  id: serial('id').primaryKey(),
+  accountNumber: varchar('account_number', { length: 20 }).notNull().unique(),
+  accountHolder: varchar('account_holder', { length: 100 }).notNull(),
+  balance: numeric('balance', { precision: 15, scale: 2 }).notNull().default('0'),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: 口座ID（自動採番）</li>
+    <li><code>accountNumber</code>: 口座番号（一意）</li>
+    <li><code>accountHolder</code>: 口座名義人</li>
+    <li><code>balance</code>: 残高（小数第2位まで）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<h3>COMMIT（確定）</h3>
+
+<p><code>COMMIT</code> は、トランザクション内で行われた操作をデータベースに確定させます。COMMIT が実行されると、それまでの操作がデータベースに永続的に反映されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">START TRANSACTION;
+UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+UPDATE accounts SET balance = balance + 1000 WHERE id = 2;
+COMMIT;  -- 両方の更新が確定される</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+import { accounts } from './schema'; // schema.ts からaccounts をインポート
+
+await db.transaction(async (tx) => {
+  // トランザクション内で複数の操作を実行
+  await tx.update(accounts).set({ balance: sql`balance - 1000` }).where(eq(accounts.id, 1));
+  await tx.update(accounts).set({ balance: sql`balance + 1000` }).where(eq(accounts.id, 2));
+  // トランザクション終了時に自動的に COMMIT
+});</code></pre>
+    </div>
+</div>
+
+<p>Drizzle ORMでは、<code>db.transaction()</code> 内で実行されたすべての操作が成功した場合、自動的に COMMIT されます。</p>
+
+<h3>ROLLBACK（キャンセル）</h3>
+
+<p><code>ROLLBACK</code> は、トランザクション内で行われた操作をすべて取消し、トランザクション開始前の状態に戻します。エラーが発生した場合や、操作を中止したい場合に使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">START TRANSACTION;
+UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+-- ここで何らかのエラーチェック
+-- エラーが見つかった場合：
+ROLLBACK;  -- すべての変更が取消される
+-- トランザクション開始前の状態に戻る</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+import { accounts } from './schema'; // schema.ts からaccounts をインポート
+
+try {
+  await db.transaction(async (tx) => {
+    const account1 = await tx.select().from(accounts).where(eq(accounts.id, 1));
+    
+    if (account1[0].balance < 1000) {
+      throw new Error('残高不足');  // エラーを投げる
+    }
+    
+    await tx.update(accounts).set({ balance: sql`balance - 1000` }).where(eq(accounts.id, 1));
+    await tx.update(accounts).set({ balance: sql`balance + 1000` }).where(eq(accounts.id, 2));
+  });
+} catch (error) {
+  // エラーが発生したため、自動的に ROLLBACK される
+  console.error('トランザクション失敗:', error.message);
+}</code></pre>
+    </div>
+</div>
+
+<p>Drizzle ORMでは、トランザクション内で例外がスローされた場合、自動的に ROLLBACK されます。手作業で ROLLBACK を呼び出す必要はありません。</p>
+
+<h3>トランザクションの重要性</h3>
+
+<p>トランザクションは、「複数の関連データを整合性を保って更新する」際に必須の仕組みです：</p>
+<ul>
+    <li><b>ACID特性</b>: Atomicity（原子性）、Consistency（一貫性）、Isolation（独立性）、Durability（永続性）の4つの特性を保証します。</li>
+    <li><b>データの一貫性</b>: 部分的な更新が起こらず、すべての変更が一緒に反映されるか、すべて反映されないかのどちらかになります。</li>
+    <li><b>エラーハンドリング</b>: 途中でエラーが発生した場合、それまでの変更を安全にリセットできます。</li>
+</ul>
+
+<h2>DELETE （条件を満たすレコードの削除）</h2>
+
+<p><code>DELETE</code> は、テーブルから特定の条件に合うレコードを削除する命令です。WHERE句を組み合わせることで、削除対象を細かく制御できます。WHERE句を指定しないと、テーブル内のすべてのレコードが削除されるため、注意が必要です。</p>
+
+<h3>条件を満たすレコードの削除（トランザクション内）</h3>
+
+<p>DELETE の最も一般的な使用方法は、WHERE句で特定の条件を指定し、その条件に合うレコードのみを削除することです。削除は破壊的な操作のため、トランザクション内で実行し、エラー時には ROLLBACK できるようにすることが推奨されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">START TRANSACTION;
+-- 作成日時が2024年より前の注文を削除
+DELETE FROM orders
+WHERE createdAt < '2024-01-01';
+COMMIT;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { lt } from 'drizzle-orm';
+
+try {
+  await db.transaction(async (tx) => {
+    // 作成日時が2024年より前の注文を削除
+    const result = await tx.delete(orders)
+      .where(lt(orders.createdAt, new Date('2024-01-01')));
+    
+    console.log(`削除されたレコード数: ${result.rowCount}`);
+    // トランザクション終了時に自動的に COMMIT
+  });
+} catch (error) {
+  console.error('削除失敗。トランザクションがROLLBACKされました:', error.message);
+}</code></pre>
+    </div>
+</div>
+
+<p>この例では：</p>
+<ul>
+    <li><code>db.transaction()</code> 内で DELETE を実行</li>
+    <li>削除が成功した場合、トランザクション終了時に自動 COMMIT</li>
+    <li>エラーが発生した場合、自動的に ROLLBACK して元の状態に戻す</li>
+</ul>
+
+<h3>複数の DELETE 操作をトランザクション内で実行</h3>
+
+<h4>paymentsテーブルの定義</h4>
+
+<p>複数の DELETE 操作の例で使用する <code>payments</code> テーブルの定義です。このテーブルは、注文に関連する支払い情報を管理するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, varchar, numeric, timestamp } from 'drizzle-orm/pg-core';
+
+export const payments = pgTable('payments', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id),
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),
+  paymentMethod: varchar('payment_method', { length: 50 }).notNull(), // 'credit_card', 'bank_transfer', etc.
+  createdAt: timestamp('created_at').defaultNow(),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: 支払いID（自動採番）</li>
+    <li><code>orderId</code>: 対象の注文ID（外部キー）</li>
+    <li><code>amount</code>: 支払額（小数第2位まで）</li>
+    <li><code>paymentMethod</code>: 支払い方法（クレジットカード、銀行振込など）</li>
+    <li><code>createdAt</code>: 支払い日時</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>複数の DELETE 操作を組み合わせる場合も、トランザクション内で実行することで、一貫性を保証できます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">START TRANSACTION;
+-- 特定顧客の古い注文を削除
+DELETE FROM orders
+WHERE customerId = 5 AND createdAt < '2024-01-01';
+
+-- その顧客に関連する支払い記録を削除
+DELETE FROM payments
+WHERE orderId IN (
+  SELECT id FROM orders WHERE customerId = 5
+);
+
+COMMIT;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { and, eq, lt, inArray } from 'drizzle-orm';
+import { orders, payments } from './schema'; // schema.ts からorders, payments をインポート
+
+try {
+  await db.transaction(async (tx) => {
+    // 特定顧客の古い注文を取得
+    const oldOrders = await tx.select({ id: orders.id })
+      .from(orders)
+      .where(and(
+        eq(orders.customerId, 5),
+        lt(orders.createdAt, new Date('2024-01-01'))
+      ));
+    
+    const orderIds = oldOrders.map(o => o.id);
+    
+    if (orderIds.length > 0) {
+      // その顧客に関連する支払い記録を削除
+      await tx.delete(payments).where(inArray(payments.orderId, orderIds));
+      
+      // 注文を削除
+      await tx.delete(orders).where(inArray(orders.id, orderIds));
+    }
+    
+    console.log('削除完了');
+  });
+} catch (error) {
+  console.error('トランザクション失敗。すべての変更がROLLBACKされました:', error.message);
+}</code></pre>
+    </div>
+</div>
+
+<h2>DELETE 演習問題</h2>
+
+<div class="quiz-question">
+    <strong>Q1. トランザクション内での条件付き削除</strong><br>
+    <code>sessions</code> テーブルから、<b>作成日時が30日以上前のセッションをすべて削除</b>してください。トランザクション内で実行し、削除されたセッション数をコンソールに出力してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { lt, sql } from 'drizzle-orm';
+
+try {
+  await db.transaction(async (tx) => {
+    const result = await tx.delete(sessions)
+      .where(lt(sessions.createdAt, sql`NOW() - INTERVAL '30 days'`));
+    
+    console.log(`${result.rowCount}個のセッションが削除されました`);
+  });
+} catch (error) {
+  console.error('削除失敗:', error.message);
+}</code></pre>
+        <p>解説：<code>lt()</code> 関数を使って「30日以上前の」という条件を指定し、トランザクション内で DELETE を実行しています。削除が成功した場合は自動 COMMIT、エラーが発生した場合は自動 ROLLBACK されます。<code>result.rowCount</code> で実際に削除されたレコード数を取得できます。</p>
+    </details>
+</div>
+
+<h2>UPDATE （レコードの更新）</h2>
+
+<p><code>UPDATE</code> は、テーブルの既存レコードのカラム値を変更する命令です。WHERE句を使って更新対象を限定したり、現在の値に基づいて新しい値を計算したり、サブクエリを使った複雑な更新も可能です。</p>
+
+<h3>すべてのレコードの値を固定値で更新</h3>
+
+<p>最も単純なUPDATEは、WHERE句を指定せず、テーブル内のすべてのレコードを同じ値で更新するケースです。例えば、ステータスを一括変更する場合に使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- すべての商品の在庫を0にリセット
+UPDATE products
+SET stock = 0;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db.update(products)
+  .set({ stock: 0 });</code></pre>
+    </div>
+</div>
+
+<h3>特定のレコードのみを更新（WHERE条件）</h3>
+
+<p>WHERE句を使うことで、特定の条件に合うレコードのみを更新できます。これが実務で最も頻繁に使われるパターンです。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- id=1 の商品の価格を100に変更
+UPDATE products
+SET price = 100
+WHERE id = 1;
+
+-- ステータスが 'pending' の注文をすべて 'completed' に変更
+UPDATE orders
+SET status = 'completed'
+WHERE status = 'pending';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+// id=1 の商品の価格を100に変更
+const result1 = await db.update(products)
+  .set({ price: 100 })
+  .where(eq(products.id, 1));
+
+// ステータスが 'pending' の注文をすべて 'completed' に変更
+const result2 = await db.update(orders)
+  .set({ status: 'completed' })
+  .where(eq(orders.status, 'pending'));</code></pre>
+    </div>
+</div>
+
+<h3>現在の値を利用した更新</h3>
+
+<p>現在のカラム値に基づいて新しい値を計算して更新する場合、<code>sql</code> を使って SQL式を直接指定します。例えば、在庫を1減らす、価格を10%値上げするといった用途に使用します。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 在庫を1減らす
+UPDATE products
+SET stock = stock - 1
+WHERE id = 5;
+
+-- 価格を10%値上げ
+UPDATE products
+SET price = price * 1.1
+WHERE category = 'electronics';</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+// 在庫を1減らす
+const result1 = await db.update(products)
+  .set({ stock: sql`${products.stock} - 1` })
+  .where(eq(products.id, 5));
+
+// 価格を10%値上げ
+const result2 = await db.update(products)
+  .set({ price: sql`${products.price} * 1.1` })
+  .where(eq(products.category, 'electronics'));</code></pre>
+    </div>
+</div>
+
+<h3>CASE式による同時置換処理</h3>
+
+<p>複数の条件に基づいて異なる値で更新したい場合は、CASE式を使います。同じカラムを複数の値で置き換える場合に便利です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- スコアに基づいてランクを一括更新
+UPDATE users
+SET rank = CASE
+  WHEN score >= 1000 THEN 'gold'
+  WHEN score >= 500 THEN 'silver'
+  WHEN score >= 100 THEN 'bronze'
+  ELSE 'iron'
+END;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql, case_ } from 'drizzle-orm';
+
+const result = await db.update(users)
+  .set({
+    rank: case_()
+      .when(sql`${users.score} >= 1000`, sql`'gold'`)
+      .when(sql`${users.score} >= 500`, sql`'silver'`)
+      .when(sql`${users.score} >= 100`, sql`'bronze'`)
+      .else(sql`'iron'`)
+      .end(),
+  });</code></pre>
+    </div>
+</div>
+
+<h3>RETURNING （更新後の値を返す）</h3>
+
+<p><code>RETURNING</code> を使うことで、UPDATE後のレコード内容を取得できます。更新内容を即座に確認したい場合に便利です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- id=1 の商品の価格を100に変更し、
+-- 更新後のレコード全体を取得
+UPDATE products
+SET price = 100
+WHERE id = 1
+RETURNING *;
+
+-- 更新後のid と新しい在庫数だけを取得
+UPDATE products
+SET stock = stock - 1
+WHERE id = 5
+RETURNING id, stock;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+// 更新後のレコード全体を取得
+const result1 = await db.update(products)
+  .set({ price: 100 })
+  .where(eq(products.id, 1))
+  .returning();
+
+// 更新後のid と新しい在庫数だけを取得
+const result2 = await db.update(products)
+  .set({ stock: sql`${products.stock} - 1` })
+  .where(eq(products.id, 5))
+  .returning({ id: products.id, stock: products.stock });</code></pre>
+    </div>
+</div>
+
+<h3>サブクエリを用いた更新</h3>
+
+<p>サブクエリを使った更新は、別のテーブルの集計結果や条件に基づいて値を更新する場合に有効です。例えば、各顧客の最後の購入日をupdateするといった用途があります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 各顧客の最後の購入日をupdateする
+UPDATE customers
+SET lastPurchaseDate = (
+  SELECT MAX(createdAt)
+  FROM orders
+  WHERE orders.customerId = customers.id
+);
+
+-- その顧客の合計購入額を更新
+UPDATE customers
+SET totalSpent = (
+  SELECT COALESCE(SUM(amount), 0)
+  FROM orders
+  WHERE orders.customerId = customers.id
+);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+// 各顧客の最後の購入日を更新
+const result1 = await db.update(customers)
+  .set({
+    lastPurchaseDate: sql`(
+      SELECT MAX(${orders.createdAt})
+      FROM ${orders}
+      WHERE ${orders.customerId} = ${customers.id}
+    )`,
+  });
+
+// その顧客の合計購入額を更新
+const result2 = await db.update(customers)
+  .set({
+    totalSpent: sql`(
+      SELECT COALESCE(SUM(${orders.amount}), 0)
+      FROM ${orders}
+      WHERE ${orders.customerId} = ${customers.id}
+    )`,
+  });</code></pre>
+    </div>
+</div>
+
+<h3>FROM句を利用して参照用テーブルを指定する</h3>
+
+<p>FROM句を使うことで、別のテーブルのデータに基づいて更新条件や更新値を指定できます。JOINに似た機能と考えられます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- departmentsテーブルの情報を基に、
+-- employeesテーブルの部門名を更新
+UPDATE employees
+SET departmentName = departments.name
+FROM departments
+WHERE employees.departmentId = departments.id;
+
+-- ordersテーブルの顧客名を、
+-- customersテーブルから取得して更新
+UPDATE orders
+SET customerName = customers.name
+FROM customers
+WHERE orders.customerId = customers.id;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+// departmentsテーブルの情報を基に更新
+const result1 = await db.update(employees)
+  .set({ departmentName: sql`${departments.name}` })
+  .from(departments)
+  .where(eq(employees.departmentId, departments.id));
+
+// ordersテーブルの顧客名を更新
+const result2 = await db.update(orders)
+  .set({ customerName: sql`${customers.name}` })
+  .from(customers)
+  .where(eq(orders.customerId, customers.id));</code></pre>
+    </div>
+</div>
+
+<h2>UPDATE 演習問題</h2>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. すべてのレコードの値を固定値で更新</strong><br>
+    <code>products</code> テーブルの全商品を対象に、<b>在庫をすべて 0 にリセット</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">const result = await db.update(products)
+  .set({ stock: 0 });</code></pre>
+        <p>解説：WHERE句を指定しないため、テーブル内のすべてのレコードが対象になります。<code>result.rowCount</code> で実際に更新されたレコード数を確認できます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. 特定のレコードのみを更新（WHERE条件）</strong><br>
+    <code>orders</code> テーブルから、<b>ステータスが 'pending' のすべての注文を 'processing' に変更</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db.update(orders)
+  .set({ status: 'processing' })
+  .where(eq(orders.status, 'pending'));</code></pre>
+        <p>解説：<code>eq()</code> を使って「status が 'pending' に等しい」という条件を指定します。条件に合うすべてのレコードが 'processing' に更新されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. 現在の値を利用した更新</strong><br>
+    <code>products</code> テーブルから、<b>id=3 の商品の在庫を1減らして</b>ください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+const result = await db.update(products)
+  .set({ stock: sql`${products.stock} - 1` })
+  .where(eq(products.id, 3));</code></pre>
+        <p>解説：<code>sql</code> を使って SQL式を直接指定することで、現在のカラム値に基づいた計算ができます。<code>${products.stock} - 1</code> により、現在の在庫から1を引いた値で更新されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. CASE式による同時置換処理</strong><br>
+    <code>users</code> テーブルの全ユーザーに対して、<b>スコアに基づいてランクを更新</b>してください：
+    <ul>
+        <li>score >= 1000: 'gold'</li>
+        <li>score >= 500: 'silver'</li>
+        <li>score >= 100: 'bronze'</li>
+        <li>その他: 'iron'</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { case_, sql } from 'drizzle-orm';
+
+const result = await db.update(users)
+  .set({
+    rank: case_()
+      .when(sql`${users.score} >= 1000`, sql`'gold'`)
+      .when(sql`${users.score} >= 500`, sql`'silver'`)
+      .when(sql`${users.score} >= 100`, sql`'bronze'`)
+      .else(sql`'iron'`)
+      .end(),
+  });</code></pre>
+        <p>解説：<code>case_()</code> を使って CASE式を構築し、複数の条件に基づいた一括置換を実現します。すべてのユーザーのランクが、スコアに応じて同時に更新されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q5. RETURNING（更新後の値を返す）</strong><br>
+    <code>products</code> テーブルから、<b>id=2 の商品の価格を150に変更し、更新後の id と price を取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db.update(products)
+  .set({ price: 150 })
+  .where(eq(products.id, 2))
+  .returning({ id: products.id, price: products.price });</code></pre>
+        <p>解説：<code>.returning()</code> を使うことで、UPDATE後のレコード内容を即座に取得できます。指定したカラムのみを返すため、不要なデータを取得する無駄がありません。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q6. サブクエリを用いた更新</strong><br>
+    <code>customers</code> テーブルの全顧客について、<b>その顧客の合計購入額（orders テーブルの amount の合計）を totalSpent に更新</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db.update(customers)
+  .set({
+    totalSpent: sql`(
+      SELECT COALESCE(SUM(${orders.amount}), 0)
+      FROM ${orders}
+      WHERE ${orders.customerId} = ${customers.id}
+    )`,
+  });</code></pre>
+        <p>解説：サブクエリを使うことで、別のテーブルの集計結果を基に値を更新できます。各顧客に対して、その顧客のすべての注文額が合計されて totalSpent に格納されます。注文がない顧客は COALESCE で 0 となります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q7. FROM句を利用して参照用テーブルを指定する</strong><br>
+    <code>orders</code> テーブルの全注文について、<b>customers テーブルから対応する顧客名を取得して、orders テーブルの customerName カラムに更新</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+const result = await db.update(orders)
+  .set({ customerName: sql`${customers.name}` })
+  .from(customers)
+  .where(eq(orders.customerId, customers.id));</code></pre>
+        <p>解説：<code>.from()</code> を使って参照テーブルを指定し、<code>.where()</code> で結合条件を定義します。orders テーブルの各レコードが customers テーブルとマッチして、顧客名が customers.name から orders.customerName に更新されます。</p>
+    </details>
+</div>
+
+<h2>INSERT （レコードの挿入）</h2>
+
+<p><code>INSERT</code> は、テーブルに新しいレコードを追加する命令です。VALUES句を使った直接的な値の挿入と、サブクエリを使った他のテーブルのデータに基づく動的な挿入の2つの主要なパターンがあります。</p>
+
+<h3>VALUES句を用いたリテラル挿入</h3>
+
+<p>VALUES句を使うことで、直接指定した値をテーブルに挿入できます。これが最も基本的で、日常的にはよく使われるパターンです。複数行を同時に挿入することも可能です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 1行を挿入
+INSERT INTO users (name, email, age)
+VALUES ('太郎', 'taro@example.com', 25);
+
+-- 複数行を一度に挿入
+INSERT INTO products (name, price, stock)
+VALUES 
+  ('りんご', 100, 50),
+  ('みかん', 80, 100),
+  ('ぶどう', 200, 30);</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">// 1行を挿入
+const result1 = await db.insert(users).values({
+  name: '太郎',
+  email: 'taro@example.com',
+  age: 25,
+});
+
+// 複数行を一度に挿入
+const result2 = await db.insert(products).values([
+  { name: 'りんご', price: 100, stock: 50 },
+  { name: 'みかん', price: 80, stock: 100 },
+  { name: 'ぶどう', price: 200, stock: 30 },
+]);</code></pre>
+    </div>
+</div>
+
+<p>ポイント：</p>
+<ul>
+    <li>単一行の場合はオブジェクト、複数行の場合は配列を <code>.values()</code> に渡します。</li>
+    <li>自動採番される PRIMARY KEY（serial など）は、値を指定しなくても自動的に割り当てられます。</li>
+    <li>DEFAULT値が設定されているカラムについても、値を指定しなければデフォルト値が使用されます。</li>
+</ul>
+
+<h3>サブクエリを用いた動的な挿入（INSERT SELECT）</h3>
+
+<h4>archived_ordersテーブルの定義</h4>
+
+<p>サブクエリを使った INSERT の例で使用する <code>archived_orders</code> テーブルの定義です。このテーブルは、過去の注文データをアーカイブするために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, numeric, timestamp } from 'drizzle-orm/pg-core';
+
+export const archived_orders = pgTable('archived_orders', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  archivedAt: timestamp('archived_at').defaultNow(),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: アーカイブレコードID（自動採番）</li>
+    <li><code>customerId</code>: 顧客ID（元の注文から複製）</li>
+    <li><code>totalAmount</code>: 注文総額（元の注文から複製）</li>
+    <li><code>createdAt</code>: 元の注文作成日時（元の注文から複製）</li>
+    <li><code>archivedAt</code>: アーカイブ実行日時</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<h4>category_summaryテーブルの定義</h4>
+
+<p>INSERT SELECT で集計結果を記録する例で使用する <code>category_summary</code> テーブルの定義です。このテーブルは、カテゴリー別の商品数などの集計結果を保持するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, varchar } from 'drizzle-orm/pg-core';
+
+export const category_summary = pgTable('category_summary', {
+  id: serial('id').primaryKey(),
+  categoryId: integer('category_id').notNull(),
+  categoryName: varchar('category_name', { length: 100 }),
+  productCount: integer('product_count').notNull().default(0),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: 集計レコードID（自動採番）</li>
+    <li><code>categoryId</code>: カテゴリーID</li>
+    <li><code>categoryName</code>: カテゴリー名</li>
+    <li><code>productCount</code>: そのカテゴリーに属する商品数</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>別のテーブルのデータをSELECTで取得し、その結果を別のテーブルに挿入する（INSERT INTO ... SELECT）ことができます。これは大量のデータを移行したり、集計結果を履歴テーブルに記録したりする場合に便利です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- orders テーブルから2024年以降の注文を
+-- archived_orders テーブルにコピー
+INSERT INTO archived_orders (customerId, totalAmount, createdAt)
+SELECT customerId, totalAmount, createdAt
+FROM orders
+WHERE createdAt >= '2024-01-01';
+
+-- 各カテゴリの商品数を summary テーブルに記録
+INSERT INTO category_summary (categoryId, productCount)
+SELECT categoryId, COUNT(*) as productCount
+FROM products
+GROUP BY categoryId;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { gte, count } from 'drizzle-orm';
+import { orders, archived_orders, products, category_summary } from './schema'; // schema.ts からインポート
+
+// orders テーブルから2024年以降の注文を
+// archived_orders テーブルにコピー
+const result1 = await db.insert(archived_orders)
+  .select({
+    customerId: orders.customerId,
+    totalAmount: orders.totalAmount,
+    createdAt: orders.createdAt,
+  })
+  .from(orders)
+  .where(gte(orders.createdAt, new Date('2024-01-01')));
+
+// 各カテゴリの商品数を summary テーブルに記録
+const result2 = await db.insert(category_summary)
+  .select({
+    categoryId: products.categoryId,
+    productCount: count(),
+  })
+  .from(products)
+  .groupBy(products.categoryId);</code></pre>
+    </div>
+</div>
+
+<p>ポイント：</p>
+<ul>
+    <li><code>.insert()</code> の後に <code>.select()</code> を続けることで、SELECT の結果を INSERT 対象にします。</li>
+    <li>SELECT結果のカラム順序と型が、INSERT先のテーブルのカラム定義と一致している必要があります。</li>
+    <li>WHERE、GROUP BY、ORDER BY などの SELECT句の機能をそのまま使用できます。</li>
+    <li>この操作がまるごと1つのトランザクションになるため、すべて成功するか、すべて失敗するかのどちらかになります。</li>
+</ul>
+
+<h2>INSERT 演習問題</h2>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. VALUES句を用いたリテラル挿入</strong><br>
+    <code>users</code> テーブルに、以下の3人のユーザーを一度に挿入してください：
+    <ul>
+        <li>name: '花子', email: 'hanako@example.com', age: 28</li>
+        <li>name: '二郎', email: 'jiro@example.com', age: 35</li>
+        <li>name: '美咲', email: 'misaki@example.com', age: 30</li>
+    </ul>
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">const result = await db.insert(users).values([
+  { name: '花子', email: 'hanako@example.com', age: 28 },
+  { name: '二郎', email: 'jiro@example.com', age: 35 },
+  { name: '美咲', email: 'misaki@example.com', age: 30 },
+]);</code></pre>
+        <p>解説：複数行を挿入する場合は、オブジェクトの配列を <code>.values()</code> に渡します。すべての行が同時に挿入され、<code>result.rowCount</code> で挿入されたレコード数（この例では3）を確認できます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. サブクエリを用いた動的な挿入（INSERT SELECT）</strong><br>
+    <code>orders</code> テーブルから、<b>2024年以降に作成されたすべての注文を archived_orders テーブルにコピー</b>してください。対象カラムは <code>id</code>、<code>customerId</code>、<code>totalAmount</code>、<code>createdAt</code> です。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { gte } from 'drizzle-orm';
+import { orders, archived_orders } from './schema'; // schema.ts からorders, archived_orders をインポート
+
+const result = await db.insert(archived_orders)
+  .select({
+    id: orders.id,
+    customerId: orders.customerId,
+    totalAmount: orders.totalAmount,
+    createdAt: orders.createdAt,
+  })
+  .from(orders)
+  .where(gte(orders.createdAt, new Date('2024-01-01')));</code></pre>
+        <p>解説：INSERT INTO ... SELECT パターンを使うことで、WHERE条件に合う注文のみを別のテーブルにコピーできます。条件に合うすべてのレコードが一度に処理されるため、大量データの移行に効率的です。</p>
+    </details>
+</div>
+
+<h2>テーブルの結合</h2>
+
+<p>JOIN は複数のテーブルを結合して、関連するデータを同時に取得する操作です。異なる種類の JOIN（INNER JOIN、LEFT OUTER JOIN、RIGHT OUTER JOIN、FULL OUTER JOIN、CROSS JOIN など）の使い分けが重要です。またUNIONというのもあります。</p>
+
+<h3>内部結合の構文（INNER JOIN と ON、エイリアス）</h3>
+
+<p>INNER JOIN は、結合条件を満たすレコードのみを取得します。両テーブルに対応するデータが存在する場合のみ結果に含まれます。エイリアス（別名）を使うことでテーブル名を短縮し、可読性を向上させます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- customers と orders を結合し、
+-- 顧客名と注文総額を取得
+SELECT c.id, c.name, o.totalAmount
+FROM customers AS c
+INNER JOIN orders AS o
+  ON c.id = o.customerId;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    id: customers.id,
+    name: customers.name,
+    totalAmount: orders.totalAmount,
+  })
+  .from(customers)
+  .innerJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+    </div>
+</div>
+
+<h3>3つ以上のテーブルの内部結合</h3>
+
+<h4>order_itemsテーブルの定義</h4>
+
+<p>複数テーブルの結合例で使用する <code>order_items</code> テーブルの定義です。このテーブルは、注文と商品の多対多関係を管理するためのテーブルで、各注文に含まれる複数の商品を記録します。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, numeric } from 'drizzle-orm/pg-core';
+
+export const order_items = pgTable('order_items', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').notNull().references(() => orders.id),
+  productId: integer('product_id').notNull().references(() => products.id),
+  quantity: integer('quantity').notNull(),
+  price: numeric('price', { precision: 12, scale: 2 }).notNull(),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: 注文品目ID（自動採番）</li>
+    <li><code>orderId</code>: 対象の注文ID（外部キー）</li>
+    <li><code>productId</code>: 注文した商品ID（外部キー）</li>
+    <li><code>quantity</code>: 数量</li>
+    <li><code>price</code>: 購入時の単価（小数第2位まで）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>3つ以上のテーブルを結合する場合、JOIN を複数回連鎖させます。結合順序に注意が必要です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">SELECT c.name, o.id, p.name as productName
+FROM customers AS c
+INNER JOIN orders AS o ON c.id = o.customerId
+INNER JOIN order_items AS oi ON o.id = oi.orderId
+INNER JOIN products AS p ON oi.productId = p.id;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+import { customers, orders, order_items, products } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    customerName: customers.name,
+    orderId: orders.id,
+    productName: products.name,
+  })
+  .from(customers)
+  .innerJoin(orders, eq(customers.id, orders.customerId))
+  .innerJoin(order_items, eq(orders.id, order_items.orderId))
+  .innerJoin(products, eq(order_items.productId, products.id));</code></pre>
+    </div>
+</div>
+
+<h3>外部結合の構文（LEFT OUTER JOIN と RIGHT OUTER JOIN、エイリアス）</h3>
+
+<p>LEFT OUTER JOIN は、左側のテーブルのすべてのレコードを保持し、右側のテーブルに対応データがない場合は NULL で埋めます。RIGHT OUTER JOIN はその逆です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 注文がない顧客も含めて取得
+SELECT c.id, c.name, o.totalAmount
+FROM customers AS c
+LEFT OUTER JOIN orders AS o
+  ON c.id = o.customerId;
+
+-- 権利者がいない注文も含めて取得（通常は使われない）
+SELECT c.name, o.id
+FROM customers AS c
+RIGHT OUTER JOIN orders AS o
+  ON c.id = o.customerId;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+// LEFT OUTER JOIN
+const result1 = await db
+  .select({
+    id: customers.id,
+    name: customers.name,
+    totalAmount: orders.totalAmount,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId));
+
+// RIGHT OUTER JOIN
+const result2 = await db
+  .select({
+    name: customers.name,
+    orderId: orders.id,
+  })
+  .from(customers)
+  .rightJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+    </div>
+</div>
+
+<h3>3つ以上のテーブルの外部結合</h3>
+
+<p>複数の外部結合を組み合わせる場合、各結合段階でどのテーブルのレコードが保持されるかに注意が必要です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- すべての顧客と、その注文（あれば）、注文内の商品（あれば）を取得
+SELECT c.name, o.id, p.name as productName
+FROM customers AS c
+LEFT OUTER JOIN orders AS o ON c.id = o.customerId
+LEFT OUTER JOIN order_items AS oi ON o.id = oi.orderId
+LEFT OUTER JOIN products AS p ON oi.productId = p.id;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+import { customers, orders, order_items, products } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    customerName: customers.name,
+    orderId: orders.id,
+    productName: products.name,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId))
+  .leftJoin(order_items, eq(orders.id, order_items.orderId))
+  .leftJoin(products, eq(order_items.productId, products.id));</code></pre>
+    </div>
+</div>
+
+<h3>内部結合と外部結合の混在</h3>
+
+<h4>discountsテーブルの定義</h4>
+
+<p>内部結合と外部結合を混在させる例で使用する <code>discounts</code> テーブルの定義です。このテーブルは、顧客に対するディスカウント（割引）情報を管理するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, integer, numeric, varchar } from 'drizzle-orm/pg-core';
+
+export const discounts = pgTable('discounts', {
+  id: serial('id').primaryKey(),
+  customerId: integer('customer_id').notNull(),
+  rate: numeric('rate', { precision: 5, scale: 2 }).notNull(),
+  code: varchar('code', { length: 50 }).notNull(),
+  description: varchar('description', { length: 200 }),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: ディスカウントID（自動採番）</li>
+    <li><code>customerId</code>: 対象の顧客ID</li>
+    <li><code>rate</code>: ディスカウント率（0 ～ 100 の数値、小数第2位まで）</li>
+    <li><code>code</code>: ディスカウントコード（割引クーポンコードなど）</li>
+    <li><code>description</code>: ディスカウントの説明（オプション）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>同じクエリ内で INNER JOIN と LEFT OUTER JOIN を混ぜることができます。JOIN の順序に応じて結果が変わるため、注意が必要です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- すべての顧客と、注文（左結合）、
+-- ただし、注文がある場合は注文内の商品（内部結合）
+SELECT c.name, o.id, p.name as productName
+FROM customers AS c
+LEFT OUTER JOIN orders AS o ON c.id = o.customerId
+INNER JOIN products AS p ON o.totalAmount > 100;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, gt } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    customerName: customers.name,
+    orderId: orders.id,
+    productName: products.name,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId))
+  .innerJoin(products, gt(orders.totalAmount, 100));</code></pre>
+    </div>
+</div>
+
+<h3>完全外部結合の構文（FULL OUTER JOIN）</h3>
+
+<p>FULL OUTER JOIN は、両テーブルのすべての레コードを保持します。対応するレコードがない場合は NULL になります。PostgreSQL では標準機能ですが、全てのデータベースが対応していません。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 注文がない顧客と、
+-- 顧客がいない注文の両方を含める
+SELECT c.id, c.name, o.id, o.totalAmount
+FROM customers AS c
+FULL OUTER JOIN orders AS o
+  ON c.id = o.customerId;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { eq, sql } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    customerId: customers.id,
+    customerName: customers.name,
+    orderId: orders.id,
+    totalAmount: orders.totalAmount,
+  })
+  .from(customers)
+  .fullJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+    </div>
+</div>
+
+<h3>直積（CROSS JOIN）</h3>
+
+<h4>sizesテーブルの定義</h4>
+
+<p>直積（CROSS JOIN）の例で使用する <code>sizes</code> テーブルの定義です。このテーブルは、商品のサイズバリエーション（S、M、L など）を管理するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, varchar, text } from 'drizzle-orm/pg-core';
+
+export const sizes = pgTable('sizes', {
+  id: serial('id').primaryKey(),
+  size: varchar('size', { length: 10 }).notNull(),
+  description: text('description'),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: サイズID（自動採番）</li>
+    <li><code>size</code>: サイズ値（'S', 'M', 'L' など）</li>
+    <li><code>description</code>: サイズの説明（オプション）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<h4>colorsテーブルの定義</h4>
+
+<p>CROSS JOIN の例で使用する <code>colors</code> テーブルの定義です。このテーブルは、商品の色バリエーション（赤、青、黒 など）を管理するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, varchar, text } from 'drizzle-orm/pg-core';
+
+export const colors = pgTable('colors', {
+  id: serial('id').primaryKey(),
+  color: varchar('color', { length: 50 }).notNull(),
+  hexCode: varchar('hex_code', { length: 7 }),
+  description: text('description'),
+});</code></pre>
+
+<p>このテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>id</code>: 色ID（自動採番）</li>
+    <li><code>color</code>: 色名（'赤', '青', '黒' など）</li>
+    <li><code>hexCode</code>: 16進数カラーコード（'#FF0000' など、オプション）</li>
+    <li><code>description</code>: 色の説明（オプション）</li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>CROSS JOIN は、2つのテーブルの直積を求めます。結合条件がないため、全組み合わせが実行される結果になります。テーブルサイズが大きい場合、結果レコード数が膨大になるため注意が必要です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- サイズ S, M, L の全組み合わせで、
+-- 色赤、青、黒の全組み合わせの商品を作成
+SELECT sz.size, c.color
+FROM sizes AS sz
+CROSS JOIN colors AS c;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sizes, colors } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    size: sizes.size,
+    color: colors.color,
+  })
+  .from(sizes)
+  .crossJoin(colors);</code></pre>
+    </div>
+</div>
+
+<h3>自然結合（NATURAL JOIN）</h3>
+
+<p>NATURAL JOIN は、同じ名前のカラムを自動的に検出して結合条件とします。明示的に ON を指定する必要がないため、シンプルに書けますが、カラム名に依存するため、スキーマ変更に脆弱です。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- 両テーブルに id カラムがある場合、自動的に結合される
+SELECT *
+FROM employees
+NATURAL JOIN departments;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">// Drizzleは naturalJoin をサポートしていないため、
+// 明示的な INNER JOIN を使用することが推奨されます
+import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select()
+  .from(employees)
+  .innerJoin(departments, eq(employees.departmentId, departments.id));</code></pre>
+    </div>
+</div>
+
+<h3>UNION</h3>
+
+<h4>active_customersテーブルとarchived_customersテーブルの定義</h4>
+
+<p>UNION を使った結果の結合の例で使用する <code>active_customers</code> と <code>archived_customers</code> テーブルの定義です。これらのテーブルは、現在アクティブな顧客と、削除または非アクティブになった顧客を管理するために使用されます。以下のように <code>src/schema.ts</code> に定義を追加してください。</p>
+
+<pre><code class="typescript">// src/schema.ts に追加
+import { pgTable, serial, varchar, boolean, timestamp } from 'drizzle-orm/pg-core';
+
+export const active_customers = pgTable('active_customers', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  email: varchar('email', { length: 100 }).notNull(),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const archived_customers = pgTable('archived_customers', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  email: varchar('email', { length: 100 }).notNull(),
+  archivedAt: timestamp('archived_at').defaultNow(),
+});</code></pre>
+
+<p>これらのテーブルは以下のカラムで構成されています：</p>
+<ul>
+    <li><code>active_customers</code>:
+        <ul>
+            <li><code>id</code>: 顧客ID（自動採番）</li>
+            <li><code>name</code>: 顧客名</li>
+            <li><code>email</code>: メールアドレス</li>
+            <li><code>isActive</code>: アクティブ状態（デフォルト: true）</li>
+            <li><code>createdAt</code>: 登録日時</li>
+        </ul>
+    </li>
+    <li><code>archived_customers</code>:
+        <ul>
+            <li><code>id</code>: 顧客ID（自動採番）</li>
+            <li><code>name</code>: 顧客名</li>
+            <li><code>email</code>: メールアドレス</li>
+            <li><code>archivedAt</code>: アーカイブ日時</li>
+        </ul>
+    </li>
+</ul>
+
+<p>定義を追加したら、ターミナルで以下のコマンドを実行してデータベースに反映させてください。</p>
+
+<pre><code class="shell">npx drizzle-kit push</code></pre>
+
+<p>UNION は、複数のSELECT結果を縦に結合します。UNION（重複排除）と UNION ALL（重複保持）の2種類があります。結合対象のカラム数と型が一致している必要があります。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- アクティブなユーザーアーカイブされたユーザーの両方を取得
+SELECT id, name, 'active' as status
+FROM users
+WHERE isActive = true
+UNION
+SELECT id, name, 'archived' as status
+FROM archived_users;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">import { sql } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    id: users.id,
+    name: users.name,
+    status: sql`'active'`,
+  })
+  .from(users)
+  .where(eq(users.isActive, true))
+  .union(
+    db
+      .select({
+        id: archived_users.id,
+        name: archived_users.name,
+        status: sql`'archived'`,
+      })
+      .from(archived_users)
+  );</code></pre>
+    </div>
+</div>
+
+<h2>結合 演習問題</h2>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q1. 内部結合の構文（INNER JOIN）</strong><br>
+    <code>customers</code> と <code>orders</code> を結合して、<b>顧客名（name）と注文総額（totalAmount）を取得</b>してください。顧客に対応する注文がある場合のみ結果に含める。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    name: customers.name,
+    totalAmount: orders.totalAmount,
+  })
+  .from(customers)
+  .innerJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+        <p>解説：INNER JOIN により、customers と orders の両方に存在するレコード（対応する注文がある顧客）のみが結果に含まれます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q2. 3つ以上のテーブルの内部結合</strong><br>
+    <code>customers</code>, <code>orders</code>, <code>order_items</code> を結合して、<b>顧客名（name）と注文に含まれる商品の個数（quantity）を取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+import { customers, orders, order_items } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    name: customers.name,
+    quantity: order_items.quantity,
+  })
+  .from(customers)
+  .innerJoin(orders, eq(customers.id, orders.customerId))
+  .innerJoin(order_items, eq(orders.id, order_items.orderId));</code></pre>
+        <p>解説：複数の innerJoin を連鎖させることで、3つ以上のテーブルを結合できます。各結合段階で結合条件を指定します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q3. 外部結合の構文（LEFT OUTER JOIN）</strong><br>
+    <code>customers</code> と <code>orders</code> を結合して、<b>すべての顧客を取得し、注文がある場合は注文総額を、ない場合は NULL を表示</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    name: customers.name,
+    totalAmount: orders.totalAmount,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+        <p>解説：LEFT JOIN により、左側のテーブル（customers）のすべてのレコードが保持されます。右側テーブル（orders）に対応するレコードがない場合は NULL になります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q4. 3つ以上のテーブルの外部結合</strong><br>
+    <code>customers</code>, <code>orders</code>, <code>order_items</code> を LEFT JOIN で結合して、<b>すべての顧客と、その顧客の注文内容（あれば）を取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+import { customers, orders, order_items } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    name: customers.name,
+    orderId: orders.id,
+    quantity: order_items.quantity,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId))
+  .leftJoin(order_items, eq(orders.id, order_items.orderId));</code></pre>
+        <p>解説：複数の LEFT JOIN により、顧客が存在しない場合でも顧客レコードが保持されます。注文や注文項目がない場合は NULL が返されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q5. 内部結合と外部結合の混在</strong><br>
+    <code>customers</code> を LEFT JOIN で <code>orders</code> と結合し、その後 INNER JOIN で <code>discounts</code> テーブルを結合してください。<b>すべての顧客と、注文がある場合のみディスカウント情報を表示</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+import { customers, orders, discounts } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    name: customers.name,
+    orderId: orders.id,
+    discountRate: discounts.rate,
+  })
+  .from(customers)
+  .leftJoin(orders, eq(customers.id, orders.customerId))
+  .innerJoin(discounts, eq(orders.customerId, discounts.customerId));</code></pre>
+        <p>解説：LEFT JOIN と INNER JOIN を混ぜることで、柔軟な結合結果を作成できます。この例では、すべての顧客を保持しつつ、ディスカウント情報は注文がある顧客のみに限定されます。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q6. 完全外部結合（FULL OUTER JOIN）</strong><br>
+    <code>customers</code> と <code>orders</code> を完全外部結合して、<b>注文がない顧客も、顧客がいない注文も、両方とも結果に含める</b>ようにしてください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    customerName: customers.name,
+    orderId: orders.id,
+  })
+  .from(customers)
+  .fullJoin(orders, eq(customers.id, orders.customerId));</code></pre>
+        <p>解説：FULL OUTER JOIN により、両テーブルのすべてのレコードが保持されます。対応するレコードがない場合は NULL になります。PostgreSQL では標準機能ですが、すべてのデータベースが対応していません。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q7. 直積（CROSS JOIN）</strong><br>
+    <code>sizes</code> テーブル（値: 'S', 'M', 'L'）と <code>colors</code> テーブル（値: '赤', '青'）を直積で結合して、<b>すべてのサイズと色の組み合わせを取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { sizes, colors } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    size: sizes.size,
+    color: colors.color,
+  })
+  .from(sizes)
+  .crossJoin(colors);</code></pre>
+        <p>解説：CROSS JOIN は結合条件がないため、左全体の全組み合わせが生成されます。この例では 3 × 2 = 6 行の結果が返されます。結果レコード数が膨大になる可能性があるため注意が必要です。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q8. 自然結合（NATURAL JOIN）の代替</strong><br>
+    <code>employees</code> と <code>departments</code> を結合して、<b>全社員と所属部門名を取得</b>してください。両テーブルは <code>departmentId</code> というカラム名で関連しています。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { eq } from 'drizzle-orm';
+
+const result = await db
+  .select({
+    employeeName: employees.name,
+    departmentName: departments.name,
+  })
+  .from(employees)
+  .innerJoin(departments, eq(employees.departmentId, departments.id));</code></pre>
+        <p>解説：Drizzle ORM は自然結合をサポートしていないため、明示的な INNER JOIN を使用します。カラム名が一致していても、明示的に結合条件を指定することで、スキーマ変更に対する耐性が向上します。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q9. UNION による結果の結合</strong><br>
+    <code>active_customers</code> テーブルと <code>archived_customers</code> テーブルをUNIONで結合して、<b>アクティブな顧客と削除されたユーザーのIDと名前をまとめて取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { active_customers, archived_customers } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    id: active_customers.id,
+    name: active_customers.name,
+  })
+  .from(active_customers)
+  .union(
+    db
+      .select({
+        id: archived_customers.id,
+        name: archived_customers.name,
+      })
+      .from(archived_customers)
+  );</code></pre>
+        <p>解説：UNION により、2つの SELECT 結果が縦に結合されます。重複するレコードは自動的に排除されます（UNION ALL を使うと重複が保持されます）。結合対象のカラム数と型が一致している必要があります。</p>
+    </details>
+</div>
+
+
+
+<p>本コンテンツの作成時間：約30時間</p>
       <div class="home-bottom"><a href="../../index.html">home</a></div>
     </main>
   </div>

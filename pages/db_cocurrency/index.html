@@ -1075,7 +1075,7 @@ COMMIT;
 
 <h2>演習</h2>
 
-<p>実際に手を動かしてロック制御のSQLを書く演習（3問）と、本記事全体の内容を問う総合問題（4問）を出題します。</p>
+<p>実際に手を動かしてロック制御のSQLを書く演習（5問）と、本記事全体の内容を問う総合問題（4問）を出題します。</p>
 <p>まずは、演習用の少し複雑なテーブル（コンサートの座席予約システムと、銀行口座システム）を作成しましょう。以下のSQLを実行して準備してください。</p>
 
 <pre><code class = "sql">-- 演習用テーブルの準備
@@ -1099,6 +1099,14 @@ CREATE TABLE bank_accounts (
 );
 INSERT INTO bank_accounts (user_name, balance) VALUES
 ('Alice', 10000), ('Bob', 10000);
+
+-- ③ メタバースホテル予約システム用テーブル
+CREATE TABLE users ( user_id SERIAL PRIMARY KEY, coins INT NOT NULL );
+CREATE TABLE rooms ( room_id INT PRIMARY KEY, status VARCHAR(20), price INT );
+CREATE TABLE bookings ( id SERIAL PRIMARY KEY, user_id INT, room_id INT );
+
+INSERT INTO users (user_id, coins) VALUES (1, 10000);
+INSERT INTO rooms (room_id, status, price) VALUES (101, 'available', 8000);
 </code></pre>
 
 <p>準備ができたら、以下の問題に挑戦してください。解答は「解答を見る」をクリックすると開きます。</p>
@@ -1123,12 +1131,12 @@ INSERT INTO bank_accounts (user_name, balance) VALUES
         <strong>Q2. 【ロックのスキップ（応用）】</strong><br>
         人気のコンサートで、空いている席（status = 'available'）を「どれでもいいから1席（LIMIT 1）」確保したいです。<br>
         しかし、普通の <code>FOR UPDATE</code> を使うと、誰かがロック中の席を引き当ててしまった場合にフリーズして待たされてしまいます。<br>
-        <b>「空席を1つ取得してロックするが、もし他の人が既にロックしている席があれば、待たずに『スキップ』して次の空席を即座にロックする」</b>という、実務で超頻出の高度なFOR UPDATE構文を書いてください。
+        <b>「空席を1つ取得してロックするが、もし他の人が既にロックしている席があれば、待たずに『スキップ』して次の空席を即座にロックする」</b>というFOR UPDATE構文を書いてください。
         
         <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
             <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
             <pre><code>SELECT * FROM concert_seats WHERE status = 'available' LIMIT 1 FOR UPDATE SKIP LOCKED;</code></pre>
-            <p>解説：<code>SKIP LOCKED</code> はチケット予約やキュー処理（ジョブワーカー）などで必須となるテクニックです。 これをつけることで、競合による「待ち」を完全に無くし、爆速で並行処理を進めることができます。</p>
+            <p>解説：<code>SKIP LOCKED</code> はチケット予約やキュー処理（ジョブワーカー）などで必須となるテクニックです。 これをつけることで、競合による「待ち」を完全に無くし、並行処理を進めることができます。</p>
         </details>
     </div>
 
@@ -1144,12 +1152,65 @@ INSERT INTO bank_accounts (user_name, balance) VALUES
         </details>
     </div>
 
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+        <strong>Q4. 【複数テーブルにまたがる予約トランザクション】</strong><br>
+        メタバース空間上のホテル予約システムを開発しています。ユーザー（user_id = 1）が、空室の部屋（room_id = 101）を予約するバックエンドの処理をSQLで記述してください。<br>
+        この処理では、他の予約処理との競合（Lost Updateや残高の二重引き落とし）を防ぐため、以下の要件を満たす<b>一連のトランザクション（BEGIN から COMMIT まで）</b>を完全に記述してください。
+        <ul style="margin-top: 5px;">
+            <li>部屋の情報とユーザーの所持コイン情報の両方を排他ロック（FOR UPDATE）して取得する。</li>
+            <li>部屋のステータスを 'booked' に更新する。</li>
+            <li>ユーザーの所持コインから部屋の価格（8000）を減算する。</li>
+            <li>予約履歴（bookingsテーブル）に新しいレコードをINSERTする。</li>
+        </ul>
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            
+            <pre><code class = "sql">BEGIN;
+
+-- 1. 競合を防ぐため、関係する行を全てロックして最新の状態を取得
+SELECT * FROM rooms WHERE room_id = 101 FOR UPDATE;
+SELECT * FROM users WHERE user_id = 1 FOR UPDATE;
+
+-- (ここでアプリケーション側が「空室か？」「残高は足りているか？」をIF文でチェックします)
+
+-- 2. 部屋を予約済みに更新
+UPDATE rooms SET status = 'booked' WHERE room_id = 101;
+
+-- 3. ユーザーの残高を減らす
+UPDATE users SET coins = coins - 8000 WHERE user_id = 1;
+
+-- 4. 予約履歴を作成
+INSERT INTO bookings (user_id, room_id) VALUES (1, 101);
+
+COMMIT;</code></pre>
+            <p>解説：実際のWebアプリケーション（API）では、必ずこのように <code>BEGIN</code> と <code>COMMIT</code> で複数のクエリを囲み、最初に <code>FOR UPDATE</code> で必要なリソースを全てロックしてから更新処理を行います。これにより、同時に同じ部屋を予約しようとした他のユーザーの処理は最初のSELECT文で待機させられ、安全に処理を完了できます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+        <strong>Q5. 【デッドロックを回避するロック順序】</strong><br>
+        ゲーム内のギルドシステムで、3人のプレイヤー（ID: 10, 20, 30）が同時にアイテムを交換し合う複雑なトレード処理を実行します。<br>
+        システムはトランザクションの中で、これら3人のプレイヤーのデータ（playersテーブル）を <code>FOR UPDATE</code> でロックする必要があります。<br>
+        もし別のトランザクションが同時に「30, 20, 10」の順でロックを取得しようとした場合、タイミングによっては<b>デッドロック</b>が発生してしまいます。<br>
+        デッドロックをアーキテクチャレベルで確実に回避するために、この3人の行を<b>安全にまとめてロックする1つのSELECTクエリ</b>を記述してください。
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <pre><code>SELECT * FROM players 
+WHERE id IN (10, 20, 30) 
+ORDER BY id 
+FOR UPDATE;</code></pre>
+            <p>解説：デッドロックを防ぐ鉄則は「すべてのトランザクションが必ず同じ順番でロックを取得する」ことです。複数行をロックする際、<code>IN</code>句を使うだけでもPostgreSQLが内部で良しなに処理してくれる場合が多いですが、明示的に <code>ORDER BY id</code> （主キーなどの一意な値でソート）をつけてから <code>FOR UPDATE</code> を実行することで、どのような複雑なトレード処理でも確実に一方向からのロックとなり、デッドロックを理論上完全に防ぐことができます。</p>
+        </details>
+    </div>
+
     <hr style="margin: 40px 0;">
 
     <h3>同時実行制御とロックの問題</h3>
 
     <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
-        <strong>Q4. 【分離レベルの選択】</strong><br>
+        <strong>Q6. 【分離レベルの選択】</strong><br>
         あなたは月末に「今月の全ユーザーの売上集計レポート」を出力する重い処理（数分かかる）を実行します。<br>
         集計中に他のユーザーが新しく売上データ（INSERT）を追加しても、集計結果が途中で変わらない（Phantomが発生しない）ようにしたいです。しかし、他のユーザーの業務（INSERT）をロックしてブロックすることは許されません。<br>
         このレポート集計トランザクションにおいて、<b>最も適した分離レベル</b>は次のうちどれですか？<br>
@@ -1165,7 +1226,7 @@ INSERT INTO bank_accounts (user_name, balance) VALUES
     </div>
 
     <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
-        <strong>Q5. 【テーブルロックの仕様】</strong><br>
+        <strong>Q7. 【テーブルロックの仕様】</strong><br>
         データベースの運用中、あるテーブルから不要なカラムを削除するために <code>ALTER TABLE</code> コマンドを実行しました。この時、テーブルには最強のロックである「AccessExclusiveLock」がかかります。<br>
         この <code>ALTER TABLE</code> の処理が終わるまでの間、一般のユーザーがそのテーブルに対して単なる <code>SELECT</code>（読み取り）を実行しようとすると、どのような挙動になりますか？
         
@@ -1177,7 +1238,7 @@ INSERT INTO bank_accounts (user_name, balance) VALUES
     </div>
 
     <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
-        <strong>Q6. 【デッドロックのメカニズム】</strong><br>
+        <strong>Q8. 【デッドロックのメカニズム】</strong><br>
         トランザクションAが「Alice」の行をロックし、トランザクションBが「Bob」の行をロックしました。<br>
         その後、Aが「Bob」の行をロックしようとして待ち状態になり、同時にBが「Alice」の行をロックしようとして待ち状態になりました。<br>
         お互いがお互いのロック解放を永遠に待ち続けるこの現象を<b>デッドロック（Deadlock）</b>と呼びます。PostgreSQLはこの状態に陥った時、システムを停止させないためにどのような自動復旧処理を行いますか？
@@ -1190,7 +1251,7 @@ INSERT INTO bank_accounts (user_name, balance) VALUES
     </div>
 
     <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
-        <strong>Q7. 【理論と実装の統合：なぜFOR UPDATEでLost Updateが防げるのか？】</strong><br>
+        <strong>Q9. 【理論と実装の統合：なぜFOR UPDATEでLost Updateが防げるのか？】</strong><br>
         Lost Update（更新の喪失）の実験で、Bさんがフリーズして待たされた後、AさんがコミットするとBさんの処理が再開しました。もしBさんがアプリ側で「在庫を9にする」という固定のUPDATE文（<code>SET stock = 9</code>）を投げていればLost Updateが発生しますが、<code>FOR UPDATE</code>でロックを取得した後に再取得（SELECT）を行えば防ぐことができます。<br>
         なぜ <code>FOR UPDATE</code> の待機明けに再度 <code>SELECT</code> をすると、正しい計算ができるのでしょうか？（PostgreSQLのロック解除後の挙動の観点から答えてください）
         

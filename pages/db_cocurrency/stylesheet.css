@@ -478,3 +478,29 @@ pre, code {
   word-break: normal;
   word-wrap: normal;
 }
+
+
+/* details（解答欄）表示をライト／ダークで確実に見えるように修正 */
+details {
+  background: #f6f8fa; /* ライト時の薄い背景 */
+  color: #111;         /* ライト時は濃い文字色 */
+  padding: 10px;
+  border-radius: 6px;
+}
+details summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: inherit; /* 親の色を継承 */
+}
+
+/* ダークモード時は薄い背景＋明るい文字色にする（黒は不可視になるため避ける） */
+body.theme-dark details {
+  background: rgba(255,255,255,0.1) !important; /* !important を追加してHTMLのstyle指定を上書き */
+  color: #eaeaea !important; /* 念のためこちらにも追加 */
+}
+body.theme-dark details summary {
+  color: inherit;
+}
+
+/* details 内の要素は親の色を継承する */
+details * { color: inherit; }
