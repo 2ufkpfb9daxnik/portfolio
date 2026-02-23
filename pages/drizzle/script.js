@@ -306,39 +306,75 @@
   }
 
   // --- テーマ切替 ---
-  function toggleTheme() {
-    const body = document.body;
-    const isDark = body.classList.contains('theme-dark');
-    if (isDark) {
-      body.classList.remove('theme-dark');
-      body.classList.add('theme-tsuki');
-    } else {
-      body.classList.remove('theme-tsuki');
-      body.classList.add('theme-dark');
-    }
-    const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
-    document.cookie = 'theme=' + currentTheme + '; path=/; max-age=31536000';
+// 1. ページ読み込み時にシンタックスハイライトを適用する（enhanceCodeBlocksより先に実行）
+document.addEventListener('DOMContentLoaded', (event) => {
+  // enhanceCodeBlocksの前にハイライト処理を適用
+  if (typeof hljs !== 'undefined') {
+    hljs.highlightAll();
+  }
+  
+  // enhanceCodeBlocksを実行
+  try { enhanceCodeBlocks(); } catch (e) { /* ignore */ }
+  
+  // enhanceCodeBlocks後に、新しく作成されたコード要素に再度ハイライトを適用
+  if (typeof hljs !== 'undefined') {
+    document.querySelectorAll('.code-content code').forEach(el => {
+      hljs.highlightElement(el);
+    });
+  }
+});
 
-    // テーマ切替ごとにアニメ色の最適化を行う（ダークなら明るめ、ライトなら淡背景）
-    if (body.classList.contains('theme-dark')) {
-      // keep base hue but adapt brightness/saturation for dark theme visibility
-      if (!window._animBaseHSL) setRandomThemeColors(true);
-      const b = window._animBaseHSL;
-      window._animBaseHSL = { h: b.h, s: clamp(Math.max(30, b.s), 18, 90), l: clamp(Math.max(48, b.l), 20, 92) };
-    } else {
-      // ライトへ戻る際は背景とベース色を再生成して「毎回ランダム」を実現
-      setRandomThemeColors(true);
-    }
+// 2. 整理されたテーマ切替関数
+function toggleTheme() {
+  const body = document.body;
+  const isDark = body.classList.contains('theme-dark');
+  
+  // テーマクラスの切り替え
+  if (isDark) {
+    body.classList.remove('theme-dark');
+    body.classList.add('theme-tsuki');
+  } else {
+    body.classList.remove('theme-tsuki');
+    body.classList.add('theme-dark');
+  }
+  
+  // クッキーへの保存
+  const currentTheme = body.classList.contains('theme-dark') ? 'dark' : 'tsuki';
+  document.cookie = 'theme=' + currentTheme + '; path=/; max-age=31536000';
 
-    applyBodyBackground();
-    if (window._animLayers) {
-      for (const l of window._animLayers) {
-        if (l && typeof l.onThemeChange === 'function') {
-          try { l.onThemeChange(); } catch (e) { /* ignore */ }
-        }
+  // テーマ切替ごとにアニメ色の最適化を行う
+  if (body.classList.contains('theme-dark')) {
+    // keep base hue but adapt brightness/saturation for dark theme visibility
+    if (!window._animBaseHSL) setRandomThemeColors(true);
+    const b = window._animBaseHSL;
+    window._animBaseHSL = { h: b.h, s: clamp(Math.max(30, b.s), 18, 90), l: clamp(Math.max(48, b.l), 20, 92) };
+  } else {
+    // ライトへ戻る際は背景とベース色を再生成して「毎回ランダム」を実現
+    setRandomThemeColors(true);
+  }
+
+  applyBodyBackground();
+  
+  if (window._animLayers) {
+    for (const l of window._animLayers) {
+      if (l && typeof l.onThemeChange === 'function') {
+        try { l.onThemeChange(); } catch (e) { /* ignore */ }
       }
     }
   }
+
+  // --- Highlight.js のテーマ切り替え処理 ---
+  const hljsTheme = document.getElementById('hljs-theme');
+  if (hljsTheme) {
+    if (body.classList.contains('theme-dark')) {
+      // ダークモード時は GitHub Dark テーマを読み込む
+      hljsTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css";
+    } else {
+      // ライトモード時は GitHub Light テーマを読み込む
+      hljsTheme.href = "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css";
+    }
+  }
+}
 
   function loadTheme() {
     const cookies = (document.cookie || '').split(';');
@@ -1689,10 +1725,13 @@ function enhanceCodeBlocks() {
   });
 }
 
-// run after DOM ready (also integrate with existing init flow)
-document.addEventListener('DOMContentLoaded', function () {
-  try { enhanceCodeBlocks(); } catch (e) { /* ignore */ }
-});
-
 // expose for manual re-run if content is mutated
-window.enhanceCodeBlocks = enhanceCodeBlocks;
+window.enhanceCodeBlocks = function() {
+  enhanceCodeBlocks();
+  // Re-highlight after enhancing
+  if (typeof hljs !== 'undefined') {
+    document.querySelectorAll('.code-content code').forEach(el => {
+      hljs.highlightElement(el);
+    });
+  }
+};

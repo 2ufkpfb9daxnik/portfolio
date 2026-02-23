@@ -306,6 +306,24 @@
   }
 
   // --- テーマ切替 ---
+  // 1. ページ読み込み時にシンタックスハイライトを適用する（enhanceCodeBlocksより先に実行）
+  document.addEventListener('DOMContentLoaded', (event) => {
+    // enhanceCodeBlocksの前にハイライト処理を適用
+    if (typeof hljs !== 'undefined') {
+      hljs.highlightAll();
+    }
+    
+    // enhanceCodeBlocksを実行
+    try { enhanceCodeBlocks(); } catch (e) { /* ignore */ }
+    
+    // enhanceCodeBlocks後に、新しく作成されたコード要素に再度ハイライトを適用
+    if (typeof hljs !== 'undefined') {
+      document.querySelectorAll('.code-content code').forEach(el => {
+        hljs.highlightElement(el);
+      });
+    }
+  });
+
   function toggleTheme() {
     const body = document.body;
     const isDark = body.classList.contains('theme-dark');
@@ -1740,10 +1758,78 @@ function enhanceCodeBlocks() {
   });
 }
 
-// run after DOM ready (also integrate with existing init flow)
-document.addEventListener('DOMContentLoaded', function () {
-  try { enhanceCodeBlocks(); } catch (e) { /* ignore */ }
-});
+// === 実験用: 複数ターミナルコードブロックの自動グループ化 ===
+function groupTerminalCodeBlocks() {
+  // `data-terminal` 属性を持つコードブロックを検出
+  const terminalBlocks = document.querySelectorAll('[data-terminal]');
+  if (terminalBlocks.length === 0) return;
+
+  // 連続するペアをgroup化
+  let i = 0;
+  while (i < terminalBlocks.length) {
+    const blockA = terminalBlocks[i];
+    const codeBlockA = blockA.closest('.code-block');
+    
+    if (!codeBlockA) {
+      i++;
+      continue;
+    }
+
+    // 次のブロックがあるかチェック
+    let blockB = null;
+    let codeBlockB = null;
+    if (i + 1 < terminalBlocks.length) {
+      blockB = terminalBlocks[i + 1];
+      codeBlockB = blockB.closest('.code-block');
+    }
+
+    // ペアになっているかチェック（連続した兄弟要素）
+    if (codeBlockB && codeBlockA.nextElementSibling === codeBlockB) {
+      // wrapper作成
+      const wrapper = document.createElement('div');
+      wrapper.className = 'experiment-terminals';
+
+      // A用のコンテナ
+      const containerA = document.createElement('div');
+      containerA.className = 'terminal-container-a';
+      const labelA = document.createElement('div');
+      labelA.className = 'terminal-label';
+      labelA.textContent = 'Aさんのターミナル';
+      containerA.appendChild(labelA);
+      containerA.appendChild(codeBlockA.cloneNode(true));
+
+      // B用のコンテナ
+      const containerB = document.createElement('div');
+      containerB.className = 'terminal-container-b';
+      const labelB = document.createElement('div');
+      labelB.className = 'terminal-label';
+      labelB.textContent = 'Bさんのターミナル';
+      containerB.appendChild(labelB);
+      containerB.appendChild(codeBlockB.cloneNode(true));
+
+      wrapper.appendChild(containerA);
+      wrapper.appendChild(containerB);
+
+      // 元のコードブロックを置き換え
+      codeBlockA.parentNode.replaceChild(wrapper, codeBlockA);
+      codeBlockB.parentNode.removeChild(codeBlockB);
+
+      // インデックス調整
+      i += 2;
+    } else {
+      i++;
+    }
+  }
+}
 
 // expose for manual re-run if content is mutated
-window.enhanceCodeBlocks = enhanceCodeBlocks;
+window.enhanceCodeBlocks = function() {
+  enhanceCodeBlocks();
+  // Re-highlight after enhancing
+  if (typeof hljs !== 'undefined') {
+    document.querySelectorAll('.code-content code').forEach(el => {
+      hljs.highlightElement(el);
+    });
+  }
+  groupTerminalCodeBlocks();
+};

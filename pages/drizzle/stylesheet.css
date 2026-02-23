@@ -670,3 +670,45 @@ body.theme-dark .comparison-table td {
 body.theme-dark .comparison-table th {
   background-color: rgba(255, 255, 255, 0.05); /* ヘッダーの背景を暗い透かしにする */
 }
+
+/* ===== Highlight.js の背景を透明にし、自作の背景色を活かす ===== */
+.hljs {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Highlight.jsトークンカラーをテーマに応じて調整 */
+body.theme-tsuki .hljs,
+body.theme-tsuki .hljs-attr,
+body.theme-tsuki .hljs-quote {
+  color: #111;
+}
+
+body.theme-dark .hljs,
+body.theme-dark .hljs-attr,
+body.theme-dark .hljs-quote {
+  color: #eaeaea;
+}
+
+/* キーワード、数値、文字列などのハイライト色を確保 */
+.hljs-string { color: #028a0f; }
+.hljs-number { color: #0066ff; }
+.hljs-literal { color: #0066ff; }
+.hljs-attr { color: #df3600; }
+.hljs-symbol { color: #d73a49; }
+.hljs-bullet { color: #005cc5; }
+.hljs-title { color: #6f42c1; }
+.hljs-section { color: #6f42c1; }
+.hljs-keyword { color: #d73a49; }
+.hljs-type { color: #d73a49; }
+
+body.theme-dark .hljs-string { color: #85e89d; }
+body.theme-dark .hljs-number { color: #79b8ff; }
+body.theme-dark .hljs-literal { color: #79b8ff; }
+body.theme-dark .hljs-attr { color: #f97583; }
+body.theme-dark .hljs-symbol { color: #f97583; }
+body.theme-dark .hljs-bullet { color: #79b8ff; }
+body.theme-dark .hljs-title { color: #b392f0; }
+body.theme-dark .hljs-section { color: #b392f0; }
+body.theme-dark .hljs-keyword { color: #f97583; }
+body.theme-dark .hljs-type { color: #f97583; }

@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>関係データベースにおける同時実行制御</title>
   <link rel="stylesheet" href="stylesheet.css" />
+    <link rel="stylesheet" id="hljs-theme" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
 </head>
 <body class="theme-tsuki">
   <div class="layout">
@@ -166,6 +170,11 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 ('革靴', 'shoes', 5),
 ('限定Tシャツ', 'clothes', 10);</code></pre>
 
+<h2>実験</h2>
+
+<p>これからの実験では、2人のユーザー（AさんとBさん）が同時にデータベースにアクセスしている状況を想定して、トランザクション分離レベルの違いによってどのようなアノマリーが発生するのか、またそれをどう防ぐのかを確認していきます。Aさんは上に、Bさんは下に書いてあるコマンドを順番(その時点では同時に)に実行した、ということにします(空である場合もありますというか、ほとんど片方は空です)。
+</p>
+
 <h2>実験1: Dirty Read（ダーティリード）</h2>
 
 <p data-mode="precise">トランザクションT1がデータ項目を変更し、その変更がコミットまたはロールバックされる前に、別のトランザクションT2がそのデータを読み取ってしまう現象。もしT1がロールバックした場合、T2は「存在しなかったはずのデータ」を読み取って処理を進めたことになり、不整合を引き起こす。</p>
@@ -176,42 +185,25 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 
 <p>順番にしたがって、Aさんのターミナル、Bさんのターミナルでそれぞれコマンドを実行してみてください。</p>
 
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル</th>
-            <th>Bさんのターミナル</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td>Aさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>Aさんが「限定スニーカー」の在庫を1減らす操作を実行（まだコミットしていない）</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-            <td>Bさんが「限定スニーカー」の在庫を確認</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td>ROLLBACK;</td>
-            <td>(10)</td>
-            <td>Bさんは在庫が減っていないことを確認（Dirty Readは発生しない）</td>
-        </tr>
-    </tbody>
-</table>
+<h4>ステップ 1</h4>
+<p>Aさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>Aさんが「限定スニーカー」の在庫を1減らす操作を実行（まだコミットしていない）</p>
+<pre><code class="language-sql" data-terminal="a">UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>Bさんが「限定スニーカー」の在庫を確認</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 4</h4>
+<p>Aさんがトランザクションをロールバック。Bさんは在庫が減っていないことを確認（Dirty Readは発生しない）</p>
+<pre><code class="language-sql" data-terminal="a">ROLLBACK;</code></pre>
+<pre><code class="language-sql" data-terminal="b">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
 
 <p>PostgreSQLは、他の人が「編集中」のデータは決して見せず、常に「確定済み」の安全なデータだけを見せてくれることがわかります。</p>
 
@@ -223,60 +215,42 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 
 <p>PostgreSQLのデフォルト設定（READ COMMITTED）では、この現象は発生します。</p>
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル</th>
-            <th>Bさんのターミナル</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td>Aさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>1回目の確認。👉 結果は「10」</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>BEGIN;</td>
-            <td>Bさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td></td>
-            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
-            <td>Bさんが「限定スニーカー」の在庫を1減らす</td>
-        </tr>
-        <tr>
-            <td>5</td>
-            <td></td>
-            <td>COMMIT;</td>
-            <td>Bさんがトランザクションを終了</td>
-        </tr>
-        <tr>
-            <td>6</td>
-            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>Aさんが同じコマンドで2回目の確認。👉 結果が「9」に変わっている！</td>
-        </tr>
-        <tr>
-            <td>7</td>
-            <td>COMMIT;</td>
-            <td></td>
-            <td>Aさんがトランザクションを終了</td>
-        </tr>
-    </tbody>
-</table>
+
+<h4>ステップ 1</h4>
+<p>Aさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>1回目の確認。結果は「10」</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>Bさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 4</h4>
+<p>Bさんが「限定スニーカー」の在庫を1減らす</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 5</h4>
+<p>Bさんがトランザクションを終了</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
+
+<h4>ステップ 6</h4>
+<p>Aさんが同じコマンドで2回目の確認。結果が「9」に変わっている！</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 7</h4>
+<p>Aさんがトランザクションを終了</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
 <p>Aさんから見ると、同じコマンドを2回実行したのに、結果が異なる（Non-repeatable Read）という現象が発生しています。</p>
 
 <p>Non-repeatable Readは、Fuzzy Readとも呼ばれます。同じ行を読んだのに、トランザクション中に値が曖昧（ファジー）に変わってしまう現象を指します。</p>
@@ -289,60 +263,41 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 
 <p>これもデフォルト設定で発生します。</p>
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル</th>
-            <th>Bさんのターミナル</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td>Aさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>SELECT item_name FROM inventory WHERE category = 'shoes';</td>
-            <td></td>
-            <td>1回目の確認。👉 結果は「限定スニーカー」と「革靴」の<strong>2行</strong></td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>BEGIN;</td>
-            <td>Bさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td></td>
-            <td>INSERT INTO inventory (item_name, category, stock) VALUES ('ブーツ', 'shoes', 5);</td>
-            <td>Bさんが「ブーツ」を靴カテゴリに追加</td>
-        </tr>
-        <tr>
-            <td>5</td>
-            <td></td>
-            <td>COMMIT;</td>
-            <td>Bさんがトランザクションを終了</td>
-        </tr>
-        <tr>
-            <td>6</td>
-            <td>SELECT item_name FROM inventory WHERE category = 'shoes';</td>
-            <td></td>
-            <td>Aさんが同じコマンドで2回目の確認。👉 結果が「限定スニーカー」「革靴」「ブーツ」の<strong>3行</strong>に増えている！</td>
-        </tr>
-        <tr>
-            <td>7</td>
-            <td>COMMIT;</td>
-            <td></td>
-            <td>Aさんがトランザクションを終了</td>
-        </tr>
-    </tbody>
-</table>
+
+<h4>ステップ 1</h4>
+<p>Aさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>1回目の確認。結果は「限定スニーカー」と「革靴」の<strong>2行</strong></p>
+<pre><code class="language-sql" data-terminal="a">SELECT item_name FROM inventory WHERE category = 'shoes';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>Bさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 4</h4>
+<p>Bさんが「ブーツ」を靴カテゴリに追加</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">INSERT INTO inventory (item_name, category, stock) VALUES ('ブーツ', 'shoes', 5);</code></pre>
+
+<h4>ステップ 5</h4>
+<p>Bさんがトランザクションを終了</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
+
+<h4>ステップ 6</h4>
+<p>Aさんが同じコマンドで2回目の確認。結果が「限定スニーカー」「革靴」「ブーツ」の<strong>3行</strong>に増えている！</p>
+<pre><code class="language-sql" data-terminal="a">SELECT item_name FROM inventory WHERE category = 'shoes';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 7</h4>
+<p>Aさんがトランザクションを終了</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
 
 <p>Aさんから見ると、同じ検索条件で2回実行したのに、結果の行数が増えている（Phantom Read）という現象が発生しています。</p>
 
@@ -354,54 +309,37 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 
 <p>PostgreSQLでは、Dirty Writeも発生しません。他の人が編集中（未コミット）の行を更新しようとすると、どうなるか見てみましょう。</p>
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル</th>
-            <th>Bさんのターミナル</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td>Aさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>UPDATE inventory SET stock = 5 WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>Aさんが在庫を変更（未コミット）</td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>BEGIN;</td>
-            <td>Bさんがトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td></td>
-            <td>UPDATE inventory SET stock = 10 WHERE item_name = '限定スニーカー';</td>
-            <td>Bさんも同じ行を更新しようとする。👉 Bの画面がフリーズ（待機状態）になる！</td>
-        </tr>
-        <tr>
-            <td>5</td>
-            <td>COMMIT;</td>
-            <td></td>
-            <td>Aさんがトランザクションを確定。👉 その瞬間、Bのフリーズが解けて更新が実行される。</td>
-        </tr>
-        <tr>
-            <td>6</td>
-            <td></td>
-            <td>COMMIT;</td>
-            <td>Bさんがトランザクションを終了</td>
-        </tr>
-    </tbody>
-</table>
+
+<h4>ステップ 1</h4>
+<p>Aさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>Aさんが在庫を変更（未コミット）</p>
+<pre><code class="language-sql" data-terminal="a">UPDATE inventory SET stock = 5 WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>Bさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 4</h4>
+<p>Bさんも同じ行を更新しようとする。Bの画面がフリーズ（待機状態）になる！</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = 10 WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 5</h4>
+<p>Aさんがトランザクションを確定。その瞬間、Bのフリーズが解けて更新が実行される。</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 6</h4>
+<p>Bさんがトランザクションを終了</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
+
 <p>PostgreSQLは、同時に同じ行を書き換えようとした場合、自動的に「行ロック（Row-level lock）」をかけて、後から来た人を待たせる仕組みを持っています。</p>
 
 <h2>実験5: Lost Update(更新の喪失)</h2>
@@ -412,77 +350,62 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 2個売れたのだから本当は「8個」にならなければいけないのに、結果は「9個」になり、1個分の売上が消滅（ロスト）してしまいます。</p>
 
 
-<p>ここで言う"アプリ"とは、データベースの操作を制御する(=このデータベースを利用して実行されるプログラム)アプリケーションソフトウェアのことです。</p>
+<h2>実験5: Lost Update(更新の喪失)</h2>
 
+<p data-mode="precise">トランザクションT1とT2が同じデータを読み取る（Read）。その後、T1がそのデータをもとに計算して書き込み（Write）、T2も同様に書き込む。結果として、T2の書き込みがT1の書き込みを上書きしてしまい、T1の更新内容が完全に失われる（Lost）現象。</p>
+
+<p data-mode="concrete">AさんとBさんが同時にスニーカーの在庫（残り10個）を確認しました。「よし、買えるぞ」と、Aさんが「10 - 1 = 9」に更新しました。同時にBさんも、自分が最初に見た「10個」という数字をもとに「10 - 1 = 9」に更新しました。
+2個売れたのだから本当は「8個」にならなければいけないのに、結果は「9個」になり、1個分の売上が消滅（ロスト）してしまいます。</p>
+
+<p>ここで言う"アプリ"とは、データベースの操作を制御する(=このデータベースを利用して実行されるプログラム)アプリケーションソフトウェアのことです。</p>
 
 <p>PostgreSQLのデフォルト設定では、Lost Updateも発生します。</p>
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
-<table>
-<thead>
-<tr>
-<th>順番</th>
-<th>Aさんのターミナル</th>
-<th>Bさんのターミナル</th>
-<th>説明</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>1</td>
-<td>BEGIN;</td>
-<td></td>
-<td>Aさんがトランザクションを開始</td>
-</tr>
-<tr>
-<td>2</td>
-<td></td>
-<td>BEGIN;</td>
-<td>Bさんがトランザクションを開始</td>
-</tr>
-<tr>
-<td>3</td>
-<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-<td></td>
-<td>Aさんが在庫を確認。👉 結果は「10」</td>
-</tr>
-<tr>
-<td>4</td>
-<td></td>
-<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-<td>Bさんも在庫を確認。👉 結果は「10」</td>
-</tr>
-<tr>
-<td>5</td>
-<td>UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</td>
-<td></td>
-<td>Aさんが<b>アプリ上で計算した「9」</b>を直接書き込む（未コミット）</td>
-</tr>
-<tr>
-<td>6</td>
-<td></td>
-<td>UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</td>
-<td>Bさんも<b>アプリ上で計算した「9」</b>を直接書き込む（未コミット）👉 フリーズして待つ</td>
-</tr>
-<tr>
-<td>7</td>
-<td>COMMIT;</td>
-<td></td>
-<td>Aさんが確定。👉 Bのフリーズが解ける</td>
-</tr>
-<tr>
-<td>8</td>
-<td></td>
-<td>COMMIT;</td>
-<td>Bさんが確定。（Aさんが書いた9の上に、Bさんがさらに9を上書きしてしまう）</td>
-</tr>
-<tr>
-<td>9</td>
-<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-<td></td>
-<td>👉 <b>結果は「9」！ Aさんが買った事実が完全に消滅（Lost）した！</b></td>
-</tr>
-</tbody>
-</table>
+
+<h4>ステップ 1</h4>
+<p>Aさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>Bさんがトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 3</h4>
+<p>Aさんが在庫を確認。結果は「10」</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 4</h4>
+<p>Bさんも在庫を確認。結果は「10」</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 5</h4>
+<p>Aさんがアプリ上で計算した「9」を直接書き込む（未コミット）</p>
+<pre><code class="language-sql" data-terminal="a">UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 6</h4>
+<p>Bさんもアプリ上で計算した「9」を直接書き込む（未コミット）。フリーズして待つ</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 7</h4>
+<p>Aさんが確定。Bのフリーズが解ける</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 8</h4>
+<p>Bさんが確定。（Aさんが書いた9の上に、Bさんがさらに9を上書きしてしまう）</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
+
+<h4>ステップ 9</h4>
+<p>結果は「9」！ Aさんが買った事実が完全に消滅（Lost）した！</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
 
 <p>同じような現象として、Cursor Lost Update(カーソルによる更新の喪失)があります。プログラムからデータベースを操作する際、「カーソル（Cursor）」という1行ずつデータを処理する仕組みを使った時に発生する Lost Update のことです。本質的な発生メカニズムは通常の Lost Update と同じです。</p>
 
@@ -497,66 +420,45 @@ INSERT INTO inventory (item_name, category, stock) VALUES
 
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
 
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル（店長）</th>
-            <th>Bさんのターミナル（客）</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td>店長(Aさん)が集計処理を開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>SELECT stock FROM inventory WHERE item_name = '限定Tシャツ';</td>
-            <td></td>
-            <td>店長がTシャツの在庫を確認。<br>👉 <b>結果は「10」（メモ帳に10と記録する）</b></td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>BEGIN;</td>
-            <td>客(Bさん)が購入処理を開始</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td></td>
-            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定Tシャツ';</td>
-            <td>客がセット購入のため、Tシャツの在庫を1減らす（9に更新）</td>
-        </tr>
-        <tr>
-            <td>5</td>
-            <td></td>
-            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
-            <td>客がスニーカーの在庫も1減らす（9に更新）</td>
-        </tr>
-        <tr>
-            <td>6</td>
-            <td></td>
-            <td>COMMIT;</td>
-            <td>客の購入が確定（DB上は正しく両方とも9になる）</td>
-        </tr>
-        <tr>
-            <td>7</td>
-            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>店長が次にスニーカーの在庫を確認。<br>👉 <b>結果は「9」！ 店長は「Tシャツ10 ＋ スニーカー9 ＝ 19個」という、絶対にあり得ない合計数を観測してしまう。</b></td>
-        </tr>
-        <tr>
-            <td>8</td>
-            <td>COMMIT;</td>
-            <td></td>
-            <td>店長が集計処理を終了</td>
-        </tr>
-    </tbody>
-</table>
+<h4>ステップ 1</h4>
+<p>店長(Aさん)が集計処理を開始</p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p>店長がTシャツの在庫を確認。結果は「10」（メモ帳に10と記録する）</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定Tシャツ';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>客(Bさん)が購入処理を開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 4</h4>
+<p>客がセット購入のため、Tシャツの在庫を1減らす（9に更新）</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定Tシャツ';</code></pre>
+
+<h4>ステップ 5</h4>
+<p>客がスニーカーの在庫も1減らす（9に更新）</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</code></pre>
+
+<h4>ステップ 6</h4>
+<p>客の購入が確定（DB上は正しく両方とも9になる）</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
+
+<h4>ステップ 7</h4>
+<p>店長が次にスニーカーの在庫を確認。結果は「9」！ 店長は「Tシャツ10 ＋ スニーカー9 ＝ 19個」という、絶対にあり得ない合計数を観測してしまう。</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 8</h4>
+<p>店長が集計処理を終了</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
 
 <h2>実験7: Write Skew</h2>
 
@@ -589,80 +491,59 @@ if (sneaker.stock + tshirt.stock > 0) {
     throw new Error("両方をゼロにすることはできません！");
 }</code></pre>
 
-<p>Write Skew は、AさんとBさんの処理が同時にこの「アプリ側のIF文」を通過してしまうことに問題があります。データベース側はただ別々の行（スニーカーとTシャツ）が更新されただけなので競合とみなさず、結果としてアプリのルールが崩れてしまうのです。</p>
+Write Skew は、AさんとBさんの処理が同時にこの「アプリ側のIF文」を通過してしまうことに問題があります。データベース側はただ別々の行（スニーカーとTシャツ）が更新されただけなので競合とみなさず、結果としてアプリのルールが崩れてしまうのです。
 
 <p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
-<table>
-    <thead>
-        <tr>
-            <th>順番</th>
-            <th>Aさんのターミナル</th>
-            <th>Bさんのターミナル</th>
-            <th>説明</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>1</td>
-            <td>SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</td>
-            <td></td>
-            <td>Aさんが少し厳しいレベルでトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>2</td>
-            <td>BEGIN;</td>
-            <td></td>
-            <td></td>
-        </tr>
-        <tr>
-            <td>3</td>
-            <td></td>
-            <td>SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</td>
-            <td>Bさんも同じレベルでトランザクションを開始</td>
-        </tr>
-        <tr>
-            <td>4</td>
-            <td></td>
-            <td>BEGIN;</td>
-            <td></td>
-        </tr>
-<tr>
-            <td>5</td>
-            <td>SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</td>
-            <td></td>
-            <td>Aさんが両方の在庫を確認。<br><b>👉「Tシャツが残っているから、スニーカーを0にしてもルール違反にならない」とアプリが判断</b></td>
-        </tr>
-        <tr>
-            <td>6</td>
-            <td></td>
-            <td>SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</td>
-            <td>Bさんも両方の在庫を確認。<br><b>👉「スニーカーが残っているから、Tシャツを0にしてもルール違反にならない」とアプリが判断</b></td>
-        </tr>
-        <tr>
-            <td>7</td>
-            <td>UPDATE inventory SET stock = 0 WHERE item_name = '限定スニーカー';</td>
-            <td></td>
-            <td>Aさんがスニーカーを0に更新（まだコミットしていない）</td>
-        </tr>
-        <tr>
-            <td>8</td>
-            <td></td>
-            <td>UPDATE inventory SET stock = 0 WHERE item_name = '限定Tシャツ';</td>
-            <td>BさんがTシャツを0に更新（まだコミットしていない）👉 更新する行が違うのでフリーズせず通る！</td>
-        </tr>
-        <tr>
-            <td>9</td>
-            <td>COMMIT;</td>
-            <td></td>
-            <td>Aさんがトランザクションを確定</td>
-        </tr>
-        <tr>
-            <td>10</td>
-            <td></td>
-            <td>COMMIT;</td>
-            <td>Bさんもトランザクションを確定👉 ルール違反の状態が完成！</td>
-    </tbody>    
-</table>
+
+<h4>ステップ 1</h4>
+<p>Aさんが少し厳しいレベルでトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a">SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 2</h4>
+<p></p>
+<pre><code class="language-sql" data-terminal="a">BEGIN;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 3</h4>
+<p>Bさんも同じレベルでトランザクションを開始</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</code></pre>
+
+<h4>ステップ 4</h4>
+<p></p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">BEGIN;</code></pre>
+
+<h4>ステップ 5</h4>
+<p>Aさんが両方の在庫を確認。「Tシャツが残っているから、スニーカーを0にしてもルール違反にならない」とアプリが判断</p>
+<pre><code class="language-sql" data-terminal="a">SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 6</h4>
+<p>Bさんも両方の在庫を確認。「スニーカーが残っているから、Tシャツを0にしてもルール違反にならない」とアプリが判断</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</code></pre>
+
+<h4>ステップ 7</h4>
+<p>Aさんがスニーカーを0に更新（まだコミットしていない）</p>
+<pre><code class="language-sql" data-terminal="a">UPDATE inventory SET stock = 0 WHERE item_name = '限定スニーカー';</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 8</h4>
+<p>BさんがTシャツを0に更新（まだコミットしていない）。更新する行が違うのでフリーズせず通る！</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">UPDATE inventory SET stock = 0 WHERE item_name = '限定Tシャツ';</code></pre>
+
+<h4>ステップ 9</h4>
+<p>Aさんがトランザクションを確定</p>
+<pre><code class="language-sql" data-terminal="a">COMMIT;</code></pre>
+<pre><code class="language-sql" data-terminal="b"></code></pre>
+
+<h4>ステップ 10</h4>
+<p>Bさんもトランザクションを確定。ルール違反の状態が完成！</p>
+<pre><code class="language-sql" data-terminal="a"></code></pre>
+<pre><code class="language-sql" data-terminal="b">COMMIT;</code></pre>
 
 <h2>4つの分離レベル</h2>
 
