@@ -352,6 +352,46 @@
     applyBodyBackground();
   }
 
+  // --- 表示モード切替（厳密 / 具体） ---
+  function updateModeButtons() {
+    const isPrecise = document.body.classList.contains('mode-precise');
+    const p = document.getElementById('btn-mode-precise');
+    const c = document.getElementById('btn-mode-concrete');
+    const pm = document.getElementById('btn-mode-precise-mobile');
+    const cm = document.getElementById('btn-mode-concrete-mobile');
+    if (p) p.classList.toggle('active', isPrecise);
+    if (c) c.classList.toggle('active', !isPrecise);
+    if (pm) pm.classList.toggle('active', isPrecise);
+    if (cm) cm.classList.toggle('active', !isPrecise);
+  }
+
+  function setMode(mode) {
+    const body = document.body;
+    if (mode === 'precise') {
+      body.classList.add('mode-precise');
+      body.classList.remove('mode-concrete');
+    } else {
+      body.classList.remove('mode-precise');
+      body.classList.add('mode-concrete');
+    }
+    try { localStorage.setItem('articleMode', mode); } catch (e) {}
+    updateModeButtons();
+  }
+
+  function toggleMode() {
+    const isPrecise = document.body.classList.contains('mode-precise');
+    setMode(isPrecise ? 'concrete' : 'precise');
+  }
+
+  function loadMode() {
+    let mode = 'concrete';
+    try {
+      const saved = localStorage.getItem('articleMode');
+      if (saved === 'precise' || saved === 'concrete') mode = saved;
+    } catch (e) {}
+    setMode(mode);
+  }
+
   // --- DOM 補助（既存） ---
   function splitContentToSections() {
     const wrapper = document.getElementById('content-wrapper');
@@ -1529,11 +1569,18 @@
     // まず毎回ランダム色を決める（ライト側の背景／ベース色）
     setRandomThemeColors(true);
     loadTheme();
+    loadMode();
     splitContentToSections();
     buildTocFromHeadings();
     window.toggleTheme = toggleTheme;
     window.loadTheme = loadTheme;
     window.initAnimationSystem = initAnimationSystem;
+    // expose mode functions for onclick handlers and sync UI
+    window.setMode = setMode;
+    window.toggleMode = toggleMode;
+    window.loadMode = loadMode;
+    // ensure buttons reflect current mode
+    try { updateModeButtons(); } catch (e) {}
     initAnimationSystem();
   });
 
@@ -1634,6 +1681,8 @@ function enhanceCodeBlocks() {
     const gutter = document.createElement('pre');
     gutter.className = 'code-gutter';
     gutter.setAttribute('aria-hidden', 'true');
+    gutter.style.whiteSpace = 'pre';
+    gutter.style.overflowX = 'auto';
     const gutterLines = [];
     for (let i = 0; i < lines.length; i++) {
       gutterLines.push(String(start + i));
@@ -1642,6 +1691,8 @@ function enhanceCodeBlocks() {
 
     const content = document.createElement('pre');
     content.className = 'code-content';
+    content.style.whiteSpace = 'pre';
+    content.style.overflowX = 'auto';
     // keep original classes for syntax highlighting (if any)
     const newCode = document.createElement('code');
     newCode.className = code.className || '';

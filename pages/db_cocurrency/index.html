@@ -11,22 +11,1200 @@
     <nav class="sidebar">
       <a class="home-link" href="../../index.html">home</a>
       <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="mode-toggle-group" style="margin-top:0.6em;">
+        <button id="btn-mode-precise" class="mode-toggle" type="button" onclick="setMode('precise')">一般モード</button>
+        <button id="btn-mode-concrete" class="mode-toggle" type="button" onclick="setMode('concrete')">具体モード</button>
+      </div>
       <div class="toc"></div>
     </nav>
     <main class="main-content">
       <div class="home-top">
         <a href="../../index.html">home</a>
         <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+        <div class="mode-toggle-group mobile-only" style="margin-left:0.6em;">
+          <button id="btn-mode-precise-mobile" class="mode-toggle" type="button" onclick="setMode('precise')">厳密</button>
+          <button id="btn-mode-concrete-mobile" class="mode-toggle" type="button" onclick="setMode('concrete')">具体</button>
+        </div>
       </div>
 
-      <div id="content-wrapper"><p>作成: 2026-02-01 23:57</p>
-<p><a href="https://takeshiwada1980.github.io/DB-2025/lecture13.html">データベース工学という講義の課題2</a></p>
+      <div id="content-wrapper">
+        <h1>関係データベースにおける同時実行制御</h1>
+        <p>作成: 2026-02-01 23:57</p>
+        <p><a href="https://takeshiwada1980.github.io/DB-2025/lecture13.html">データベース工学という講義の課題2</a></p>
+        <p>このページでは、一般的な説明を行う一般モードと、具体的な説明を行う具体モードを切り替えて読むことができます。特に、本文背景色が変わっているところが、切り替えると別の文章が読める部分です。左上の一般モード/具体モードのボタンをクリックして切り替えてください。片方だけでは読めないこともないけど接続が変な部分もありますから、どちらも読むことをおすすめします。</p>
+
 <h2>概要</h2>
-<p>wikipediaから引用:</p>
+
+<div data-mode="precise">
+
+<p><a href = "https://ja.wikipedia.org/wiki/%E3%83%88%E3%83%A9%E3%83%B3%E3%82%B6%E3%82%AF%E3%82%B7%E3%83%A7%E3%83%B3%E5%88%86%E9%9B%A2%E3%83%AC%E3%83%99%E3%83%AB">wikipediaから引用:</a></p>
+
 <p>    データベースへの読み書き（トランザクション処理）には処理時間が発生する。複数のトランザクション処理依頼がデータベース管理システムへ行われたとき、これらを処理する1つの方法は逐次的（Serial）に1つずつトランザクションを処理する方法である。トランザクション処理に処理時間がかかることから、後に行われた処理は先に行われた処理が完了するまでの間「待ち」の状態になってしまう。</p>
-<p>    待ちを最小化するためにはデータベース管理システムが複数のトランザクションを並行（Concurrent）に処理すればよい。しかしトランザクションは必ずしも安全に並列化できるとは限らない。そのためデータベース管理システムは各並行トランザクションが互いに影響を受けず分離された安全な範囲内でトランザクションを並行化する。あるいは、異常な振る舞い（anomalies）を起こしうる分離レベルが低い並行化を許容し、代わりに並行性を高めてトランザクション処理性能を上昇させる[1]。この安全性・一貫性と性能のトレードオフを生む、並行性トランザクションの分離具合がトランザクション分離レベルである[2]。</p>
+
+<p>    待ちを最小化するためにはデータベース管理システムが複数のトランザクションを並行（Concurrent）に処理すればよい。しかしトランザクションは必ずしも安全に並列化できるとは限らない。そのためデータベース管理システムは各並行トランザクションが互いに影響を受けず分離された安全な範囲内でトランザクションを並行化する。あるいは、異常な振る舞い（anomalies）を起こしうる分離レベルが低い並行化を許容し、代わりに並行性を高めてトランザクション処理性能を上昇させる。この安全性・一貫性と性能のトレードオフを生む、並行性トランザクションの分離具合がトランザクション分離レベルである。</p>
+
 <p>    トランザクション分離レベルはシステム要件に合わせデータベースの設計者によって設定される。例えば一切の異常な振る舞いが許されない金融システムには高いトランザクション分離レベルが設定される（代わりに性能は低い）。またanomaliesの可能性がある分離レベルを選択してもanomaliesを起こしえないトランザクションのみを処理するように設計すれば一貫性を保ちながら高い性能を得ることが可能になる。</p>
-<p>最終更新: 2026-02-10 23:20</p></div>
+
+</div>
+
+<div data-mode="concrete">
+
+<p>私たちが普段使っているWebサービスやアプリの裏側では、データベースが絶えずデータの読み書き（トランザクション処理）を行っています。この処理には必ず「時間」がかかります。</p>
+
+<p>もし、数千人が同時にアクセスしてきたとき、システムはどう対応すべきでしょうか？</p>
+
+<h4>🛒 オンラインショッピングで考える「直列」と「並行」</h4>
+
+<p>人気のオンラインストアで「在庫残り1個」の限定商品を販売する状況を想像してみてください。</p>
+
+<ol>
+    <strong><li>順番待ちの列を作る（逐次処理：Serial）</li></strong>
+    
+    <p>最も安全なのは、購入リクエストを完全に1列に並べ、1人ずつ順番に処理していく方法です。
+Aさんの決済処理が終わるまで、BさんやCさんはデータベースに触れません。そのため「在庫1個なのに2人とも買えてしまう」といった事故は絶対に起きません。しかし、後続のユーザーはずっとロード画面のまま待たされることになり、全体の処理性能は最悪になります。</p>
+    
+    <strong><li>複数のレジで同時に処理する（並行処理：Concurrent）</li></strong>
+    
+    <p>待ち時間を最小化するためには、複数人のリクエストを同時に処理すればよいのです。
+しかし、データベース上のデータには物理的な実体がありません。もしAさんとBさんが完全に同じタイミングで「在庫1」というデータを読み取り、それぞれが「在庫0」に更新してしまったらどうなるでしょうか。1個しかない商品が2人に売れてしまうという、致命的な破綻が発生します。データベースの世界では、こうした同時実行によるデータの矛盾をアノマリー(Anomalies、異常な振る舞い)と呼びます。</p>
+</ol>
+
+<h4>⚖️ 安全性と性能のトレードオフ：トランザクション分離レベル</h4>
+
+<p>この「アノマリー」を防ぎつつ、できるだけ「並行処理」のスピードも活かしたい。これ解決するためにデータベースが用意している設定値が「トランザクション分離レベル（隔離レベル）」です。</p>
+
+<ul>
+    <li><strong>分離レベルを高くする</strong>と、他の処理を厳しくブロックして完全に矛盾を防ぎますが、待ち時間が増えて性能は落ちます（例：1円どころか1銭のミスも許されない銀行のシステム）。</li>
+    <li><strong>分離レベルを低くする</strong>と、多少のアノマリーが起きるリスクを許容する代わりに、高速で処理を捌きます（例：SNSのいいね数の集計など）。</li>
+</ul>
+
+<p>システム要件に合わせてこのレベルを設定するのが、データベース設計者の重要な役割です。
+また、あえて性能の高い（低い）分離レベルを選択しつつも、<strong>アプリケーションのコードやSQLの書き方（明示的なロックなど）を工夫することで、アノマリーを完全に防ぎながら高い性能を両立させる</strong>という高度な設計も可能です。</p>
+
+<p>ここでは、この「隔離レベル」の違いによって、実際にどのようなアノマリーが発生するのか、またそれをどう防ぐのかを、PostgreSQL 17 の Dockerコンテナを用いて実験・検証していきます。</p>
+</div>
+
+<h2>実験環境の準備</h2>
+
+<p>事前にDocker Desktopをインストールして起動しておいてください。</p>
+
+<p>まず、PostgreSQL 17(.6) の Dockerイメージをダウンロードします。</p>
+
+<pre><code class="shell">docker pull postgres:17.6</code></pre>
+
+<h4>compose.ymlの作成</h4>
+
+<p>適当な作業ディレクトリを開いて、compose.yml(または、docker-compose.yml)という名前のファイルを作成し、以下の内容を貼り付けて保存してください。</p>
+
+<pre><code class = "yaml">services:
+  db:
+    image: postgres:17
+    container_name: postgres-concurrency-lab
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: shop_db
+    ports:
+      - "5432:5432"</code></pre>
+
+<p>ファイルを作成して保存したら、ターミナルでそのディレクトリに移動し、以下のコマンドを実行してください。</p>
+
+<pre><code class="shell">docker compose up -d</code></pre>
+
+<p>これで、PostgreSQL 17 のコンテナが起動します。</p>
+
+<h4>ターミナルを2つ開いて接続する</h4>
+
+<p>並行処理（複数のユーザーが同時にアクセスする状態）を疑似体験するために、ターミナルのウィンドウを2つ開いてください。 これらを画面の左右に並べて配置することをおすすめします。</p>
+
+<p>ここでは、左側のウィンドウをAさん、右側のウィンドウをBさんとして扱います。</p>
+
+<p>両方のターミナルで、それぞれ以下のコマンドを実行し、PostgreSQLのコマンドラインツール（psql）に接続してください。</p>
+
+<pre><code class="shell">docker compose exec db psql -U postgres -d shop_db</code></pre>
+
+<p>プロンプトが <pre>shop_db=#</pre> に変われば接続成功です。これで、AさんとBさんが同じデータベースに同時にログインしている状態が作れました。</p>
+
+<h4>psql での基本操作と終了方法</h4>
+
+<p>psql 内での基本的なルールは以下の通りです。</p>
+
+<ul>
+    <li>SQLの実行</li>
+    <p>SQL文を入力し、Enterキーを押すと実行されます。結果が表示されます。文の最後には、セミコロン（;）をつける必要があります。セミコロンがないと、改行待ち扱いになりコマンドが実行されません。</p>
+    <li>テーブル一覧の確認</li>
+    <p>\dt と入力してEnterを押すと、作成されているテーブルの一覧を確認できます（これにはセミコロンは不要です）。</p>
+    <li>終了</li>
+    <p>\q と入力してEnterを押すと、psqlから抜けることができます。あるいは、Ctrl + Dで終了することも可能です。</p>
+</ul>
+
+<h4>環境の削除</h4>
+
+<p>不要になったら、以下のコマンドを実行してコンテナを削除してください。</p>
+
+<pre><code class="shell">docker compose down -v</code></pre>
+
+<p>-v をつけることでデータベースの中身も綺麗に消去されます。</p>
+
+<h4>実験用テーブルの作成</h4>
+<p>実験で使用するテーブルを作成します。どちらか片方のターミナルで以下のSQL文を実行してください。</p>
+
+<pre><code class="sql">-- 既存のテーブルがあれば削除
+DROP TABLE IF EXISTS inventory;
+
+-- テーブルの作成
+CREATE TABLE inventory (
+    id SERIAL PRIMARY KEY,
+    item_name VARCHAR(50) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    stock INT NOT NULL
+);
+
+-- 初期データの投入
+INSERT INTO inventory (item_name, category, stock) VALUES
+('限定スニーカー', 'shoes', 10),
+('革靴', 'shoes', 5),
+('限定Tシャツ', 'clothes', 10);</code></pre>
+
+<h2>実験1: Dirty Read（ダーティリード）</h2>
+
+<p data-mode="precise">トランザクションT1がデータ項目を変更し、その変更がコミットまたはロールバックされる前に、別のトランザクションT2がそのデータを読み取ってしまう現象。もしT1がロールバックした場合、T2は「存在しなかったはずのデータ」を読み取って処理を進めたことになり、不整合を引き起こす。</p>
+
+<p data-mode="concrete">Aさんが「限定スニーカー」をカートに入れ、決済の確認画面で悩んでいます（まだ購入確定＝コミットしていない）。この時、Bさんが在庫を確認すると、Aさんが買うかどうかわからないのに「在庫が減っている」ように見えてしまう状態です。もしAさんが「やっぱりやめた（ロールバック）」とした場合、Bさんは幻の在庫減少を見ていたことになります。</p>
+
+<p>実は、PostgreSQLではこのDirty Readはシステム構造上、発生しません。それを確認してみましょう。</p>
+
+<p>順番にしたがって、Aさんのターミナル、Bさんのターミナルでそれぞれコマンドを実行してみてください。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル</th>
+            <th>Bさんのターミナル</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td>Aさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>Aさんが「限定スニーカー」の在庫を1減らす操作を実行（まだコミットしていない）</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+            <td>Bさんが「限定スニーカー」の在庫を確認</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td>ROLLBACK;</td>
+            <td>(10)</td>
+            <td>Bさんは在庫が減っていないことを確認（Dirty Readは発生しない）</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>PostgreSQLは、他の人が「編集中」のデータは決して見せず、常に「確定済み」の安全なデータだけを見せてくれることがわかります。</p>
+
+<h2>実験2: Non-repeatable Read（ノンリピータブルリード）</h2>
+
+<p data-mode="precise">トランザクションT1が特定の行を読み取る。その後、別のトランザクションT2がその行を更新（または削除）してコミットする。T1が再び同じ行を読み取ると、1回目と異なる値を取得してしまう現象。一つのトランザクション内で「読み取り結果の再現性（Repeatable）」が失われる。</p>
+
+<p data-mode="concrete">Aさんがスニーカーの在庫を確認し「お、まだ10個あるな」と安心して、他のページを見て回っています。その隙に、Bさんがスニーカーを購入し決済を完了（コミット）しました。Aさんがもう一度同じスニーカーの在庫を見ると、自分が何もしていないのに突然「9個」に変わってしまっている現象です。「さっき見たデータと違う！」という状態ですね。</p>
+
+<p>PostgreSQLのデフォルト設定（READ COMMITTED）では、この現象は発生します。</p>
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル</th>
+            <th>Bさんのターミナル</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td>Aさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>1回目の確認。👉 結果は「10」</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>BEGIN;</td>
+            <td>Bさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
+            <td>Bさんが「限定スニーカー」の在庫を1減らす</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td></td>
+            <td>COMMIT;</td>
+            <td>Bさんがトランザクションを終了</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>Aさんが同じコマンドで2回目の確認。👉 結果が「9」に変わっている！</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>COMMIT;</td>
+            <td></td>
+            <td>Aさんがトランザクションを終了</td>
+        </tr>
+    </tbody>
+</table>
+<p>Aさんから見ると、同じコマンドを2回実行したのに、結果が異なる（Non-repeatable Read）という現象が発生しています。</p>
+
+<p>Non-repeatable Readは、Fuzzy Readとも呼ばれます。同じ行を読んだのに、トランザクション中に値が曖昧（ファジー）に変わってしまう現象を指します。</p>
+
+<h2>実験3: Phantom Read（ファントムリード）</h2>
+
+<p data-mode="precise">トランザクションT1がある検索条件（WHERE句など）を満たす行の集合を読み取る。その後、別のトランザクションT2がその条件を満たす新しい行を挿入（INSERT）してコミットする。T1が再び同じ条件で検索を行うと、1回目には存在しなかった「幻（ファントム）の行」が結果に現れる現象。Non-repeatable Readが「既存行の更新」であるのに対し、Phantomは「新規行の出現」を指す。</p>
+
+<p data-mode="concrete">Aさんが「靴（shoes）カテゴリの商品リスト」を検索して、現在2種類あることを確認しました。そのリストをもとに社内資料を作っている最中に、Bさんが裏で新しく「ブーツ」を靴カテゴリに追加（INSERT）しました。Aさんが資料の最終確認でもう一度検索すると、さっきまで無かったはずの商品がリストに増えている（幻影が現れる）現象です。</p>
+
+<p>これもデフォルト設定で発生します。</p>
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル</th>
+            <th>Bさんのターミナル</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td>Aさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>SELECT item_name FROM inventory WHERE category = 'shoes';</td>
+            <td></td>
+            <td>1回目の確認。👉 結果は「限定スニーカー」と「革靴」の<strong>2行</strong></td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>BEGIN;</td>
+            <td>Bさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td>INSERT INTO inventory (item_name, category, stock) VALUES ('ブーツ', 'shoes', 5);</td>
+            <td>Bさんが「ブーツ」を靴カテゴリに追加</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td></td>
+            <td>COMMIT;</td>
+            <td>Bさんがトランザクションを終了</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td>SELECT item_name FROM inventory WHERE category = 'shoes';</td>
+            <td></td>
+            <td>Aさんが同じコマンドで2回目の確認。👉 結果が「限定スニーカー」「革靴」「ブーツ」の<strong>3行</strong>に増えている！</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>COMMIT;</td>
+            <td></td>
+            <td>Aさんがトランザクションを終了</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>Aさんから見ると、同じ検索条件で2回実行したのに、結果の行数が増えている（Phantom Read）という現象が発生しています。</p>
+
+<h2>実験4: Dirty Write（ダーティライト）</h2>
+
+<p data-mode="precise">トランザクションT1があるデータ項目を更新し、それがまだコミットまたはロールバックされていない状態で、別のトランザクションT2が同じデータ項目を上書きしてしまう現象。</p>
+
+<p data-mode="concrete">Aさんが「限定スニーカー」の在庫を更新処理している最中（まだ確定していない）に、Bさんも同時に同じ在庫を強制的に上書きしてしまう状態です。もしAさんがエラーで処理を取り消そうとしても、Bさんが書き込んだデータまで巻き戻ってしまい、データがぐちゃぐちゃになります。</p>
+
+<p>PostgreSQLでは、Dirty Writeも発生しません。他の人が編集中（未コミット）の行を更新しようとすると、どうなるか見てみましょう。</p>
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル</th>
+            <th>Bさんのターミナル</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td>Aさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>UPDATE inventory SET stock = 5 WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>Aさんが在庫を変更（未コミット）</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>BEGIN;</td>
+            <td>Bさんがトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td>UPDATE inventory SET stock = 10 WHERE item_name = '限定スニーカー';</td>
+            <td>Bさんも同じ行を更新しようとする。👉 Bの画面がフリーズ（待機状態）になる！</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td>COMMIT;</td>
+            <td></td>
+            <td>Aさんがトランザクションを確定。👉 その瞬間、Bのフリーズが解けて更新が実行される。</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td></td>
+            <td>COMMIT;</td>
+            <td>Bさんがトランザクションを終了</td>
+        </tr>
+    </tbody>
+</table>
+<p>PostgreSQLは、同時に同じ行を書き換えようとした場合、自動的に「行ロック（Row-level lock）」をかけて、後から来た人を待たせる仕組みを持っています。</p>
+
+<h2>実験5: Lost Update(更新の喪失)</h2>
+
+<p data-mode="precise">トランザクションT1とT2が同じデータを読み取る（Read）。その後、T1がそのデータをもとに計算して書き込み（Write）、T2も同様に書き込む。結果として、T2の書き込みがT1の書き込みを上書きしてしまい、T1の更新内容が完全に失われる（Lost）現象。</p>
+
+<p data-mode="concrete">AさんとBさんが同時にスニーカーの在庫（残り10個）を確認しました。「よし、買えるぞ」と、Aさんが「10 - 1 = 9」に更新しました。同時にBさんも、自分が最初に見た「10個」という数字をもとに「10 - 1 = 9」に更新しました。
+2個売れたのだから本当は「8個」にならなければいけないのに、結果は「9個」になり、1個分の売上が消滅（ロスト）してしまいます。</p>
+
+
+<p>ここで言う"アプリ"とは、データベースの操作を制御する(=このデータベースを利用して実行されるプログラム)アプリケーションソフトウェアのことです。</p>
+
+
+<p>PostgreSQLのデフォルト設定では、Lost Updateも発生します。</p>
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+<table>
+<thead>
+<tr>
+<th>順番</th>
+<th>Aさんのターミナル</th>
+<th>Bさんのターミナル</th>
+<th>説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>BEGIN;</td>
+<td></td>
+<td>Aさんがトランザクションを開始</td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td>BEGIN;</td>
+<td>Bさんがトランザクションを開始</td>
+</tr>
+<tr>
+<td>3</td>
+<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+<td></td>
+<td>Aさんが在庫を確認。👉 結果は「10」</td>
+</tr>
+<tr>
+<td>4</td>
+<td></td>
+<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+<td>Bさんも在庫を確認。👉 結果は「10」</td>
+</tr>
+<tr>
+<td>5</td>
+<td>UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</td>
+<td></td>
+<td>Aさんが<b>アプリ上で計算した「9」</b>を直接書き込む（未コミット）</td>
+</tr>
+<tr>
+<td>6</td>
+<td></td>
+<td>UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';</td>
+<td>Bさんも<b>アプリ上で計算した「9」</b>を直接書き込む（未コミット）👉 フリーズして待つ</td>
+</tr>
+<tr>
+<td>7</td>
+<td>COMMIT;</td>
+<td></td>
+<td>Aさんが確定。👉 Bのフリーズが解ける</td>
+</tr>
+<tr>
+<td>8</td>
+<td></td>
+<td>COMMIT;</td>
+<td>Bさんが確定。（Aさんが書いた9の上に、Bさんがさらに9を上書きしてしまう）</td>
+</tr>
+<tr>
+<td>9</td>
+<td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+<td></td>
+<td>👉 <b>結果は「9」！ Aさんが買った事実が完全に消滅（Lost）した！</b></td>
+</tr>
+</tbody>
+</table>
+
+<p>同じような現象として、Cursor Lost Update(カーソルによる更新の喪失)があります。プログラムからデータベースを操作する際、「カーソル（Cursor）」という1行ずつデータを処理する仕組みを使った時に発生する Lost Update のことです。本質的な発生メカニズムは通常の Lost Update と同じです。</p>
+
+<h2>実験6: Read Skew</h2>
+
+<p data-mode="precise">データxとyに一貫性の制約（例：xとyの合計が常に一定など）があるとする。トランザクションT1がxを読み取る。次にT2がxとyの両方を更新し、コミットする。その後、T1がyを読み取る。結果として、T1は「更新前のx」と「更新後のy」を読んでしまい、一貫性のない状態（Skew：偏り・歪み）を観測してしまう現象。</p>
+
+<p data-mode="concrete">「Tシャツ（10着）」と「スニーカー（10足）」の在庫があり、店長が「現在庫の合計数」を集計しようとしています。店長（Aさん）がまずTシャツの在庫を「10」とメモしました。その直後、BさんがTシャツとスニーカーを1つずつセットで購入（Tシャツ9、スニーカー9に変更）しました。その後、店長がスニーカーの在庫を見ると「9」になっています。
+店長は「10 + 9 = 19個」と集計してしまい、本来存在しないはずの合計数（偏ったデータ）を観測してしまいます。</p>
+
+<p>Read Skewは、特に複数のデータ項目間に一貫性の制約がある場合に問題になります。例えば、銀行口座の残高と取引履歴のようなケースです。</p>
+
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル（店長）</th>
+            <th>Bさんのターミナル（客）</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td>店長(Aさん)が集計処理を開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>SELECT stock FROM inventory WHERE item_name = '限定Tシャツ';</td>
+            <td></td>
+            <td>店長がTシャツの在庫を確認。<br>👉 <b>結果は「10」（メモ帳に10と記録する）</b></td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>BEGIN;</td>
+            <td>客(Bさん)が購入処理を開始</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定Tシャツ';</td>
+            <td>客がセット購入のため、Tシャツの在庫を1減らす（9に更新）</td>
+        </tr>
+        <tr>
+            <td>5</td>
+            <td></td>
+            <td>UPDATE inventory SET stock = stock - 1 WHERE item_name = '限定スニーカー';</td>
+            <td>客がスニーカーの在庫も1減らす（9に更新）</td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td></td>
+            <td>COMMIT;</td>
+            <td>客の購入が確定（DB上は正しく両方とも9になる）</td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>SELECT stock FROM inventory WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>店長が次にスニーカーの在庫を確認。<br>👉 <b>結果は「9」！ 店長は「Tシャツ10 ＋ スニーカー9 ＝ 19個」という、絶対にあり得ない合計数を観測してしまう。</b></td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td>COMMIT;</td>
+            <td></td>
+            <td>店長が集計処理を終了</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>実験7: Write Skew</h2>
+
+<p data-mode="precise">データxとyに「x + y > 0（どちらかは必ず正）」などの制約があるとする。T1とT2が同時にxとyを読む。T1はyが正であることを見てxを0に更新する。同時にT2はxが正であることを見てyを0に更新する。お互いの更新は競合しない（別の行を更新している）ため、両方ともコミットに成功してしまうが、結果として「x=0かつy=0」となり、制約が破綻する現象。</p>
+
+<p data-mode="concrete">オンラインストアのルールで「Tシャツかスニーカー、どちらか1種類は必ず在庫を残して見栄えを保つ（両方ゼロにはしない）」という制約があるとします（現在どちらも10個）。
+
+Aさんがスニーカーを0個にする処理を走らせ、同時にBさんがTシャツを0個にする処理を走らせました。お互い、処理の前に「相手の商品の在庫が残っているか」を確認します。同時に確認したため、どちらも「相手の在庫があるから、自分はゼロにしてもルール違反にならない！」と判断し、別々の商品の在庫をゼロに更新してしまいます。
+結果、見事に両方の在庫がゼロになり、ルールが崩壊します。</p>
+
+<p>ここで、「データベース側に最初から(例えば)『スニーカーの在庫 ＋ Tシャツの在庫 > 0』という制約をつけておけばいいのでは？」と疑問に思うかもしれません。</p>
+
+<p>実は、PostgreSQLなどのリレーショナルデータベースにおける CHECK 制約は、基本的に「1つの行の中（単一レコード）」でしか判定できません（例：CHECK (stock >= 0) など）。今回のような複数行にまたがる制約をテーブルの機能だけで厳密に守らせることは、通常の機能では非常に困難です（複雑なトリガーなどを駆使する必要があります）。</p>
+
+<p>そのため、実際のシステム開発では、このような複雑なビジネスルールはアプリケーション側でチェックします。
+ここで言う「アプリ」とは、データベースを利用して処理を実行するプログラム（Web開発などで書くバックエンドのAPIサーバーなど）のことです。</p>
+
+<p>今回のシナリオでは、アプリの内部に以下のような処理（IF文）が書かれていると想像してください。</p>
+
+<pre><code class = "javascript">// アプリ側の処理イメージ
+// 1. まず現在の在庫を確認 (実験手順の SELECT に相当)
+const sneaker = db.query("SELECT stock FROM inventory WHERE item_name = '限定スニーカー'");
+const tshirt = db.query("SELECT stock FROM inventory WHERE item_name = '限定Tシャツ'");
+
+// 2. 制約（ルール）を満たしているかチェック
+if (sneaker.stock + tshirt.stock > 0) {
+    // ルールクリア！在庫を0に更新する (実験手順の UPDATE に相当)
+    db.query("UPDATE ..."); 
+} else {
+    throw new Error("両方をゼロにすることはできません！");
+}</code></pre>
+
+<p>Write Skew は、AさんとBさんの処理が同時にこの「アプリ側のIF文」を通過してしまうことに問題があります。データベース側はただ別々の行（スニーカーとTシャツ）が更新されただけなので競合とみなさず、結果としてアプリのルールが崩れてしまうのです。</p>
+
+<p>順番に行っている場合は、stockの値を確認して、必要であれば 実験環境の準備 節まで戻ってテーブルをリセットしてください。</p>
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>Aさんのターミナル</th>
+            <th>Bさんのターミナル</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</td>
+            <td></td>
+            <td>Aさんが少し厳しいレベルでトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>BEGIN;</td>
+            <td></td>
+            <td></td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td></td>
+            <td>SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;</td>
+            <td>Bさんも同じレベルでトランザクションを開始</td>
+        </tr>
+        <tr>
+            <td>4</td>
+            <td></td>
+            <td>BEGIN;</td>
+            <td></td>
+        </tr>
+<tr>
+            <td>5</td>
+            <td>SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</td>
+            <td></td>
+            <td>Aさんが両方の在庫を確認。<br><b>👉「Tシャツが残っているから、スニーカーを0にしてもルール違反にならない」とアプリが判断</b></td>
+        </tr>
+        <tr>
+            <td>6</td>
+            <td></td>
+            <td>SELECT stock FROM inventory WHERE item_name IN ('限定スニーカー', '限定Tシャツ');</td>
+            <td>Bさんも両方の在庫を確認。<br><b>👉「スニーカーが残っているから、Tシャツを0にしてもルール違反にならない」とアプリが判断</b></td>
+        </tr>
+        <tr>
+            <td>7</td>
+            <td>UPDATE inventory SET stock = 0 WHERE item_name = '限定スニーカー';</td>
+            <td></td>
+            <td>Aさんがスニーカーを0に更新（まだコミットしていない）</td>
+        </tr>
+        <tr>
+            <td>8</td>
+            <td></td>
+            <td>UPDATE inventory SET stock = 0 WHERE item_name = '限定Tシャツ';</td>
+            <td>BさんがTシャツを0に更新（まだコミットしていない）👉 更新する行が違うのでフリーズせず通る！</td>
+        </tr>
+        <tr>
+            <td>9</td>
+            <td>COMMIT;</td>
+            <td></td>
+            <td>Aさんがトランザクションを確定</td>
+        </tr>
+        <tr>
+            <td>10</td>
+            <td></td>
+            <td>COMMIT;</td>
+            <td>Bさんもトランザクションを確定👉 ルール違反の状態が完成！</td>
+    </tbody>    
+</table>
+
+<h2>4つの分離レベル</h2>
+
+<p>ここまで数々の異常を発生させてきました。では、データベース設計者はこれらをどうやって防げばよいのでしょうか？</p>
+
+<p>その答えが、ANSI SQL標準で定義された4つの分離レベルです。</p>
+
+<h4>各分離レベルとPostgreSQLの挙動</h4>
+
+<ol>
+    <strong><li>READ UNCOMMITTED（未コミット読取）</li></strong>
+    <p>最も制限が緩く、他人のコミット前のデータ（Dirty Read）が見えてしまう危険なレベル。</p>
+    <p>実はPostgreSQLでは、このレベルを指定しても内部的には②の READ COMMITTED と全く同じ挙動になります（後述の表における※1）。MVCC（多版型同時実行制御）という仕組みを使っているため、構造上Dirty Readを起こすことができないのです。</p>
+
+    <strong><li>READ COMMITTED（コミット済読取）</li></strong>
+    <p>コミットされたデータしか読まない。</p>
+    <p>PostgreSQLのデフォルト設定です。Dirty Readは防げますが、「実験5」で体験した Lost Update（売上の消滅） などの致命的なバグはスルーしてしまいます。</p>
+
+    <strong><li>REPEATABLE READ（反復可能読取）</li></strong>
+    <p>トランザクション中に同じ行を何度読んでも、必ず同じ値が返ってくることを保証する。</p>
+    <p>トランザクションを開始した瞬間のスナップショットを見続ける仕組みです。</p>
+
+    <strong><li>SERIALIZABLE（直列化可能）</li></strong>
+    <p>複数の並行処理を、完全に「1列に並んで順番に処理（直列実行）」したのと同じ結果になることを保証する最高レベル。</p>
+    <p>「実験7」で猛威を振るった Write Skew（書き込みの偏り） を防げる唯一のレベルです。PostgreSQLは背後でデータの依存関係（読み書きのグラフ）を監視しており、矛盾が起きそうになるとコミット時にエラーを出してシステムを守ります。</p>
+</ol>
+
+<p>PostgreSQLの内部実装はこのような標準規格が「発生してもよい」としているバグすら防いでいます(実際Dirty Readなどは起こりませんでしたね)。</p>
+
+<p>PostgreSQLにおいて各分離レベルが、どれくらいの防御力があるのかについて表にまとめたものが以下です。</p>
+
+<table>
+<thead>
+<tr>
+<th>異常\分離レベル</th>
+<th>READ UNCOMMITTED
+
+
+（未コミット読取）</th>
+<th>READ COMMITTED
+
+
+（コミット済読取）</th>
+<th>REPEATABLE READ
+
+
+（反復可能読取）</th>
+<th>SERIALIZABLE
+
+
+（直列化可能）</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><b>Dirty Write</b></td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+</tr>
+<tr>
+<td><b>Dirty Read</b></td>
+<td>🛡️ 防げる(※1)</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+</tr>
+<tr>
+<td><b>Non-repeatable Read</b></td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+</tr>
+<tr>
+<td><b>Phantom</b></td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>🛡️ 防げる(※2)</td>
+<td>🛡️ 防げる</td>
+</tr>
+<tr>
+<td><b>Read Skew</b></td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>🛡️ 防げる</td>
+<td>🛡️ 防げる</td>
+</tr>
+<tr>
+<td><b>Lost Update</b></td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>⚠️ エラーで防ぐ(※3)</td>
+<td>⚠️ エラーで防ぐ</td>
+</tr>
+<tr>
+<td><b>Write Skew</b></td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>❌ 発生する</td>
+<td>⚠️ エラーで防ぐ</td>
+</tr>
+</tbody>
+</table>
+
+<p>※2の凄さ: ANSI規格では「Phantom（幻の行の追加）は発生してもよい」とされていますが、PostgreSQLのスナップショットは優秀なのでPhantomまで完全に防ぎます。</p>
+<p>※3の挙動: Lost Updateを起こそうとすると、後から更新しようとしたトランザクションに対して ERROR: could not serialize access due to concurrent update というエラーを発生させ、強制終了（ロールバック）させることでデータを守ります。</p>
+
+<h2>分離レベルの選択</h2>
+
+<p data-mode="precise">すべての不整合（アノマリー）を防ぐために、常にデータベース全体を最高レベルの <code>SERIALIZABLE</code> に設定すれば良いかというと、実運用上はそうではありません。<code>SERIALIZABLE</code> や <code>REPEATABLE READ</code> は、競合を検知するとトランザクション自体をアボート（強制終了）させて整合性を守るため、システム全体の並行処理性能が大きく低下する原因となります。</p>
+
+<p data-mode="concrete">では、Lost Update などのバグを防ぐために、常にデータベース全体を SERIALIZABLE にしておけば良いのでしょうか？<br>
+そんなことをしていると、少しでも競合が起きるたびにPostgreSQLがバンバンとエラー（<code>could not serialize access...</code>）を出して処理を止めてしまいます。結果として、Webアプリ側で「エラーが出たら最初からやり直す（リトライ）」という複雑なプログラムを書く必要があり、システムの動作も重くなってしまいます。</p>
+
+<p data-mode="precise">システムの要件によっては、厳密な整合性よりもスループット（単位時間あたりの処理量）が最優先され、低水準の分離レベルによるアノマリーが許容される場合があります。</p>
+
+<p data-mode="concrete">大体、別に許容できるエラー（不整合）というのもあります。<br>
+例えば、<b>YouTubeの再生回数やSNSの「いいね」の数</b>です。1万人が一斉にボタンを押したとき、Lost Updateが発生して実際の「いいね」が9998回になってしまったとしても、誰も大きな問題にはしません。それよりも「いちいちエラー画面を出さずに、とにかく最高速度で処理を受け付ける」ことの方が圧倒的に重要だからです。</p>
+
+<p>そのため、実際のシステム開発では、アプリケーションの要件や許容できるリスクに応じて、適切な分離レベルを選択し、SQLの書き方を工夫することが重要になります。実務でよく使われる2つのアプローチを紹介します。</p>
+
+<h3>楽観的並行性制御（楽観的ロック）</h3>
+
+<p data-mode="precise">「トランザクション同士の競合はめったに起きないだろう」という楽観的な前提に基づき、事前のロックをかけずに処理を進めます。そして、コミット時に競合を検知した場合は処理をロールバックし、アプリケーション側でリトライを行います。一時的に分離レベルを引き上げる手法などがこれに該当します。</p>
+
+<p data-mode="concrete">基本はデフォルト（READ COMMITTED）のままにしておき、集計処理や在庫の最終更新など「絶対に途中でデータが変わってほしくない時」だけ、一時的に分離レベルを <code>REPEATABLE READ</code> や <code>SERIALIZABLE</code> に引き上げる方法です。<br>
+（※Web開発の現場では <code>version</code> という数値を管理する専用カラムを作ってアプリ側で弾く手法も人気ですが、ここでは分離レベルによる防衛策を紹介します）</p>
+
+<div data-mode="concrete">
+    <b>具体例</b>
+<pre><code>-- 処理の最初で、このトランザクションだけ分離レベルを引き上げる
+BEGIN;
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- 現在の在庫を確認
+SELECT stock FROM inventory WHERE item_name = '限定スニーカー';
+
+-- アプリ上で計算後、更新を実行
+UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';
+
+-- もしこの間に他人の更新と衝突していれば、COMMIT時にPostgreSQLがエラーを返す
+-- ERROR: could not serialize access due to concurrent update
+COMMIT;
+</code></pre>
+    <p>※PostgreSQLがエラーを出して「データの破壊」からは守ってくれますが、処理自体は失敗しています。そのため、アプリ側（Node.jsやPythonなど）に「この特定のエラーが出たら、もう一度最初のSELECTから自動でやり直す（リトライする）」というコードを書く必要があります。</p>
+</div>
+
+<h3>悲観的並行性制御（悲観的ロック / 排他ロック）</h3>
+
+<p data-mode="precise">「トランザクション同士の競合は頻繁に起きるだろう」という悲観的な前提に基づき、データを読み取る時点で明示的に排他ロック（Exclusive Lock）を取得します。他のトランザクションは、ロックが解放されるまで待機（ブロック）されます。</p>
+
+<p data-mode="concrete">分離レベルはデフォルトのまま、SQLの構文を使って<b>「今からこの行を更新するから、私が終わるまで他の人は触らないで待ってて！」</b>とデータベースに直接宣言する方法です。<br>
+Lost Update（売上の消滅）を防ぐための実務テクニックとして、最もよく使われる強力な手法です。具体的には、<code>SELECT</code> 文の末尾に <b><code>FOR UPDATE</code></b> をつけます。</p>
+
+<div data-mode="concrete">
+    <b>具体例（Aさんが購入、Bさんが同時アクセスした場合）</b>
+<pre><code>-- === Aさんの処理 ===
+BEGIN;
+-- 単なる SELECT ではなく FOR UPDATE をつけることで「行ロック」を獲得！
+SELECT stock FROM inventory WHERE item_name = '限定スニーカー' FOR UPDATE;
+</code></pre>
+
+<pre><code>-- === Bさんの処理（Aさんがコミットするまで進めなくなる） ===
+BEGIN;
+-- Bさんも在庫を見ようとしますが、Aさんが FOR UPDATE で掴んでいるため、
+-- ここで画面がピタッとフリーズして「待ち（待機状態）」になります。
+SELECT stock FROM inventory WHERE item_name = '限定スニーカー' FOR UPDATE;
+</code></pre>
+
+<pre><code>-- === Aさんの処理 ===
+-- Aさんは安全に計算し、更新できる
+UPDATE inventory SET stock = 9 WHERE item_name = '限定スニーカー';
+-- Aさんがコミットした瞬間、ロックが解除される！
+COMMIT; 
+</code></pre>
+
+<pre><code>-- === Bさんの処理 ===
+-- Aさんのコミットによりフリーズが解け、Bさんの SELECT がようやく実行されます。
+-- ★超重要：このときBさんが取得する在庫数は、Aさんが更新した後の「9」になります！
+-- そのため、Bさんは正しく「9 - 1 = 8」の計算を行うことができ、バグを防げます。
+UPDATE inventory SET stock = 8 WHERE item_name = '限定スニーカー';
+COMMIT;
+</code></pre>
+</div>
+
+<h2>問題</h2>
+
+<p>ここまで学んだ「同時実行制御」と「隔離レベル」に関する知識を確認しましょう。理論的な定義から、実務でのPostgreSQLの挙動まで、全10問を出題します。答えを頭の中に思い浮かべてから、「解答を見る」をクリックしてください。</p>
+
+<div class="quiz-container">
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q1. 実務において、Lost Update（更新の喪失）を確実に防ぐために「この行を今から更新するから、私が終わるまで他の人は触らないこと」と排他ロック（悲観的ロック）をかけるSQL構文はどれですか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. <code>SELECT ... FOR UPDATE;</code></strong></p>
+            <p>解説：この構文を使うことで、指定した行に対して明示的に行ロックを取得できます。他のトランザクションが同じ行を更新（またはFOR UPDATEで読み取り）しようとした場合、現在のトランザクションがCOMMITまたはROLLBACKされるまで待機させることができます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q2. トランザクション処理において「直列化可能性（Serializability）」が保証されている状態とは、どのような状態を指しますか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. 複数のトランザクションを並行して実行した結果が、それらを何らかの順序で1つずつ順番に（直列に）実行した結果と「等価」になる状態。</strong></p>
+            <p>解説：これがデータベースの並行制御における「正しさ」の究極の定義です。これさえ満たされていれば、並行処理によるデータの矛盾は一切起きていないと証明できます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q3. PostgreSQLのデフォルトのトランザクション分離レベルは何ですか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. READ COMMITTED （コミット済読取）</strong></p>
+            <p>解説：PostgreSQLに限らず、多くの商用リレーショナルデータベースでこのレベルがデフォルトに採用されています。Dirty Readは防げますが、Lost Updateなどはアプリケーション側で対処する必要があります。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q4. 他のトランザクションが更新処理中であり、まだ「確定（コミット）」していないデータを読み取ってしまう異常現象を何と呼びますか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. Dirty Read（ダーティリード）</strong></p>
+            <p>解説：もし更新中のトランザクションがエラーなどでロールバックされた場合、「決して存在しなかったはずの幻のデータ」を読み取って処理を進めてしまったことになり、深刻なバグを引き起こします。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q5. すべてのトランザクションを最高レベルの「SERIALIZABLE」に設定すれば、データの整合性は完全に守られます。しかし、実務のWebアプリケーション等ではあまり推奨されません。その最大の理由はなぜですか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. 競合を検知するたびにエラーを出して処理を強制終了させるため、アプリ側での「リトライ処理」が頻発し、システム全体の処理性能（スループット）が著しく低下するため。</strong></p>
+            <p>解説：整合性と性能は常にトレードオフです。SERIALIZABLEは「待ち」ではなく「強制終了（アボート）」によって不整合を防ぐため、ユーザーから見ると「エラーで弾かれやすい重いシステム」になってしまいます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q6. 「データXとYの合計は常に正である」というルールがある時、トランザクションAがXを0にし、同時にトランザクションBがYを0にしてコミットすることで、お互い別の行を更新したのにも関わらずルールが破綻してしまう異常現象を何と呼びますか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. Write Skew（書き込みの偏り）</strong></p>
+            <p>解説：REPEATABLE READレベル（スナップショット分離）でも防ぐことができない、非常に高度で厄介なアノマリーです。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q7. 本記事の実験において、Write Skew（スニーカーとTシャツの両方がゼロになるバグ）が発生してしまった理由は、「在庫の合計がゼロ以上」という制約をどこで判定していたからですか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. データベースの機能（CHECK制約など）ではなく、アプリケーション（プログラム）側のIF文で判定していたから。</strong></p>
+            <p>解説：DBのテーブル定義で行をまたぐ制約をかけるのは難しいため、実務ではアプリ側でチェックしますが、同時にチェックをすり抜けられるとDBはそのまま更新を受け入れてしまいます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q8. PostgreSQLなどが採用している、データを直接上書きせずに「バージョン（版）」を管理することで、読み取り処理が書き込み処理をブロックしない（待たせない）ようにする同時実行制御の仕組みを何と呼びますか？（アルファベット4文字）</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. MVCC (Multi-Version Concurrency Control / 多版型同時実行制御)</strong></p>
+            <p>解説：これにより、高い整合性を保ちながらも、読み取り専用の処理が高速に実行できるようになっています。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q9. PostgreSQLにおいて、分離レベルを一番低い「READ UNCOMMITTED」に設定してトランザクションを開始しました。この時、Dirty Read（他人の未確定データの読み取り）は発生しますか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. 発生しない。（PostgreSQLでは仕様上、READ COMMITTEDと同じ挙動になるため）</strong></p>
+            <p>解説：PostgreSQLは前述のMVCCアーキテクチャを採用しているため、構造上、物理的に「確定していないデータ」を見せることができません。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px;">
+        <strong>Q10. ANSI SQL標準規格において、分離レベル「REPEATABLE READ」では『発生する可能性がある』とされているものの、PostgreSQLの実装においては独自に『防ぐことができる』とされているアノマリー（異常）はどれですか？</strong>
+        <details style="margin-top: 10px; background-color: #f9f9f9; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>A. Phantom（ファントム / 幻の行の出現）</strong></p>
+            <p>解説：標準規格では防げなくてもよいとされていますが、PostgreSQLのREPEATABLE READは優秀な「スナップショット分離」を実現しているため、他の人がINSERTした新しい行（ファントム）が見えてしまう現象も完全にブロックします。</p>
+        </details>
+        
+
+<h2>PostgreSQLのロック機構を解剖する</h2>
+
+<p>ここまで、分離レベルや <code>FOR UPDATE</code> を使ってアノマリーを防ぐ方法を体験してきました。では、PostgreSQLは内部でどのように「待て」の指示（ロック）を管理しているのでしょうか？</p>
+<p>PostgreSQLは、高い並行性（たくさんの人が同時にアクセスできる性能）を維持するために、<b>「テーブル」「行」「インデックス」</b>という3つの異なる階層で、非常に緻密なロック制御を行っています。</p>
+
+<h3>テーブルレベルロック（Table-level Locks）</h3>
+
+<p data-mode="precise">PostgreSQLは、テーブルに対するアクセス制御のために8種類のロックモードを備えています。文（ステートメント）の実行時に自動的に獲得され、トランザクション終了時まで維持されます。重要なのは、<b>各モードによって「何とコンフリクト（競合・ブロック）するか」が厳密に定義されている</b>点です。</p>
+
+
+
+<ul data-mode="precise">
+    <li><b>AccessShareLock:</b> <code>SELECT</code> 時に獲得。<code>AccessExclusiveLock</code> とのみ競合。</li>
+    <li><b>RowShareLock:</b> <code>SELECT FOR UPDATE</code> 時に獲得。<code>ExclusiveLock</code>, <code>AccessExclusiveLock</code> と競合。</li>
+    <li><b>RowExclusiveLock:</b> <code>UPDATE</code>, <code>DELETE</code>, <code>INSERT</code> 時に獲得。共有系のロックなどと競合。</li>
+    <li><b>ShareUpdateExclusiveLock:</b> <code>VACUUM (FULLなし)</code> などで獲得。</li>
+    <li><b>ShareLock:</b> <code>CREATE INDEX</code> などで獲得。</li>
+    <li><b>ShareRowExclusiveLock:</b> 明示的な <code>LOCK TABLE</code> 時に獲得。</li>
+    <li><b>ExclusiveLock:</b> 明示的な <code>LOCK TABLE</code> 時に獲得。</li>
+    <li><b>AccessExclusiveLock:</b> <code>ALTER TABLE</code>, <code>DROP TABLE</code>, <code>VACUUM FULL</code> 時に獲得。<b>すべてのロックモードと競合する最強のロック。</b>（これだけが普通の <code>SELECT</code> をブロックします）</li>
+</ul>
+
+<div data-mode="concrete">
+    <b>具体的なイメージ：オンラインストアでの挙動</b><br>
+    これらの難しいモード名が意味しているのは、<b>「読み取りと書き込みはお互いを邪魔しない」</b>というPostgreSQLの優れた設計です。<br>
+    <ul>
+        <li>Aさんが <code>SELECT</code> で商品一覧を見ている時（AccessShareLock）。</li>
+        <li>Bさんが <code>UPDATE</code> で在庫を更新している時（RowExclusiveLock）。</li>
+    </ul>
+    この2つのロックは<b>コンフリクトしない</b>設定になっているため、Aさんの画面読み込みがBさんの購入処理でフリーズすることはありません。<br>
+    しかし、深夜のメンテナンスで店長がテーブルの構造を変更する <code>ALTER TABLE</code>（AccessExclusiveLock）を実行すると、これは全てのロックと競合するため、Aさんの <code>SELECT</code> すらもブロックされ「メンテナンス中」の状態になります。
+</div>
+
+<h3>行レベルロック（Row-level Locks）</h3>
+
+<p data-mode="precise">行レベルロックは、特定の行が更新・削除される時、または <code>SELECT FOR UPDATE</code> が実行された時に獲得されます。<b>行レベルロックはデータの「問い合わせ（読み取り）」には一切影響を与えず、同じ行への「書き込み（または明示的ロック）」のみを阻止します。</b><br>
+また、PostgreSQLの特筆すべきアーキテクチャとして、<b>ロックされた行の情報をメモリ上に記憶しません。</b>代わりに、実際のディスク上のデータ（タプル）に直接「ロックの印」を書き込みます。そのため、同時に何百万行をロックしてもメモリが枯渇（ロックエスカレーション）することはありませんが、ディスクへの書き込み（I/O）が発生するという特徴があります。</p>
+
+<div data-mode="concrete">
+    <b>具体的なイメージ：ピンポイントでの排他制御</b><br>
+    前回の「Lost Update」の実験でBさんの画面がフリーズしましたね。あれが<b>行レベルロック</b>です。<br>
+    Aさんが「限定スニーカー」の行だけをガッチリとロックしたため、Bさんはスニーカーを買おうとして待たされました。しかし、この時Cさんが「Tシャツ」を買おうとしたらどうなるでしょうか？<br>
+    答えは<b>「全く待たされずに即座に買える」</b>です。ロックされているのはスニーカーの「行」だけであり、テーブル全体ではないからです。これが、多くの人が同時に買い物できる（高い並行性を持つ）理由です。<br>
+    また、PostgreSQLはロックの情報を「メモリ」ではなく「商品タグそのもの（ディスク）」にメモするため、「お店の全商品を一気にロックしても、管理用のメモリがパンクしない」という非常にタフな性質を持っています。
+</div>
+
+<h3>ロックとインデックス（Indexes）</h3>
+
+<p data-mode="precise">データベースの検索を高速化する「インデックス」に対しても、読み書きの際にロックが発生します。PostgreSQLでは、インデックスの種類（アクセスメソッド）によってロックの戦略が異なります。</p>
+
+
+
+<ul data-mode="precise">
+    <li><b>GiST / R-Tree インデックス:</b> インデックス全体のレベルで共有/排他ロックを使います（文の完了後に解放）。</li>
+    <li><b>ハッシュ (Hash) インデックス:</b> ページレベル（データのかたまり毎）でロックを使います。インデックスレベルより並行性に優れますが、<b>デッドロック（お互いにロック待ちになって動けなくなる現象）の対象となるリスク</b>があります。</li>
+    <li><b>B-tree インデックス:</b> 読み書きアクセスに「短期の」ページレベルロックを使います。インデックスへのタプルの挿入/取り出しが終わると<b>ただちに解放</b>されます。</li>
+</ul>
+
+<div data-mode="concrete">
+    <b>具体的なイメージ：なぜB-treeが推奨されるのか</b><br>
+    大量のアクセスが来るWebアプリにおいて、インデックスのロックが長く続くと、システム全体の致命的なボトルネック（渋滞）になります。<br>
+    例えば <code>WHERE item_name = '限定スニーカー'</code> と検索する際、裏側ではインデックス（目次）が使われています。<br>
+    PostgreSQLのデフォルトである<b>B-treeインデックス</b>は、この「目次を見る・書き込む」瞬間のロックを、処理が終わった瞬間に秒速で手放します。さらに、構造上デッドロックが発生しません。<br>
+    そのため、オンラインショッピングのような<b>「同時実行性（多くの人が同時にアクセスすること）」が求められるアプリケーションでは、迷わず B-tree インデックスを使用することが強く推奨</b>されています。（特別な理由がない限り、PostgreSQLで普通にインデックスを作ると自動的にB-treeになります）。
+</div>
+
+
+
+
+<h2>多版型同時実行制御</h2>
+
+<p>ここまで、PostgreSQLが「READ UNCOMMITTEDでもDirty Readを起こさない」「REPEATABLE READでPhantomまで防ぐ」という規格外の優秀さを見せることを確認しました。その魔法の正体が、<b>MVCC (Multi-Version Concurrency Control / 多版型同時実行制御)</b> というアーキテクチャです。</p>
+
+<p data-mode="precise"><b>仕組み    </b><br>
+通常、データを更新（UPDATE）すると、古いデータは物理的に上書きされて消滅します。しかし、MVCCを採用しているデータベースでは、データを直接上書きしません。代わりに、<b>更新前の古いデータ（旧バージョン）を残したまま、新しく更新されたデータ（新バージョン）を追記</b>します。<br>
+各トランザクションは、自分が開始された時点での「正しいバージョンのデータ」だけをフィルタリングして読み取ります。これにより、「読み取り処理」が「書き込み処理」をロックして待たせる必要がなくなり、高い整合性とパフォーマンスを両立しています。</p>
+
+<p data-mode="concrete"><b>イメージ</b><br>
+イメージとしては、<b>ソースコード管理の「Git」</b>や、<b>鉛筆と消しゴムを使わない「ボールペンの帳簿」</b>に似ています。
+在庫を「10」から「9」に書き換えるとき、PostgreSQLは前の「10」を消しゴムで消しません。代わりに「10」に横線を引いて（無効化フラグを立てて）、下の行に新しく「9」と書き足します。
+もし別の人が「更新される前のデータ」を見たい場合は、横線が引かれた古い「10」を読ませてあげればよいのです。だからこそ、誰かが編集中でも、別の人は安全に過去のデータを読むことができます。</p>
+
+<p>実際にPostgreSQLが持っている<b>バージョンの記録（システムカラム）</b>を覗き見てみましょう。</p>
+
+
+
+<h3>実験：隠しカラム`xmin`とxmax` を覗き見る</h3>
+
+<p>PostgreSQLのすべてのテーブルには、通常の <code>SELECT *</code> では表示されない隠しカラムが存在します。代表的なのが以下の2つです。</p>
+<ul>
+    <li><b><code>xmin</code></b>: この行を<b>「作成（INSERT/UPDATE）」</b>したトランザクションのID。</li>
+    <li><b><code>xmax</code></b>: この行を<b>「削除（DELETE/更新前の古い行）」</b>したトランザクションのID（まだ生きていれば0）。</li>
+</ul>
+
+<p>ターミナルで、以下のSQLを実行して隠しカラムを表示させてみましょう。</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>順番</th>
+            <th>ターミナル（1つでOK）</th>
+            <th>説明</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1</td>
+            <td>SELECT xmin, xmax, item_name, stock FROM inventory;</td>
+            <td>現在の状態を確認します。<code>xmin</code>には数字が入り、<code>xmax</code>は「0（まだ有効）」になっているはずです。</td>
+        </tr>
+        <tr>
+            <td>2</td>
+            <td>UPDATE inventory SET stock = 99 WHERE item_name = '限定スニーカー';</td>
+            <td>スニーカーの在庫を99に変更します。</td>
+        </tr>
+        <tr>
+            <td>3</td>
+            <td>SELECT xmin, xmax, item_name, stock FROM inventory;</td>
+            <td>👉 <b>注目！</b> <code>xmin</code> の数字が新しくなり、まるで<b>別の行として新しく作られた</b>かのように振る舞っていることがわかります。古い行は裏で <code>xmax</code> に値が入り、見えなくなっています。</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>隔離レベル（Isolation Level）とは、実のところ<b>「この無数に存在するバージョンのうち、どの xmin/xmax の行を自分に見せるべきか？」というフィルタリングのルール（可視性チェック）の設定</b>に過ぎないのです。</p>
+    </div>
+</div>
+
+<h2>演習</h2>
+
+<p>実際に手を動かしてロック制御のSQLを書く演習（3問）と、本記事全体の内容を問う総合問題（4問）を出題します。</p>
+<p>まずは、演習用の少し複雑なテーブル（コンサートの座席予約システムと、銀行口座システム）を作成しましょう。以下のSQLを実行して準備してください。</p>
+
+<pre><code class = "sql">-- 演習用テーブルの準備
+DROP TABLE IF EXISTS concert_seats;
+DROP TABLE IF EXISTS bank_accounts;
+
+-- ① コンサート座席テーブル
+CREATE TABLE concert_seats (
+    id SERIAL PRIMARY KEY,
+    seat_num VARCHAR(10) UNIQUE NOT NULL,
+    status VARCHAR(20) NOT NULL -- 'available' (空席) または 'reserved' (予約済)
+);
+INSERT INTO concert_seats (seat_num, status) VALUES
+('A-1', 'available'), ('A-2', 'available'), ('A-3', 'available');
+
+-- ② 銀行口座テーブル
+CREATE TABLE bank_accounts (
+    id SERIAL PRIMARY KEY,
+    user_name VARCHAR(50) NOT NULL,
+    balance INT NOT NULL
+);
+INSERT INTO bank_accounts (user_name, balance) VALUES
+('Alice', 10000), ('Bob', 10000);
+</code></pre>
+
+<p>準備ができたら、以下の問題に挑戦してください。解答は「解答を見る」をクリックすると開きます。</p>
+
+<div class="quiz-container">
+
+    <h3>FOR UPDATE 構文</h3>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+        <strong>Q1. 【基本の行ロック】</strong><br>
+        あなたは「A-1」の座席を予約する処理をプログラムに実装しています。他のユーザーが同時に同じ席を予約（Lost Update）してしまうのを防ぐため、<b>A-1の座席情報を取得すると同時に排他ロック（FOR UPDATE）をかけるSELECT文</b>を書いてください。<br>
+        （※トランザクションは既に <code>BEGIN;</code> で開始されているものとします）
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <pre><code>SELECT * FROM concert_seats WHERE seat_num = 'A-1' FOR UPDATE;</code></pre>
+            <p>解説：このクエリを実行した瞬間から、あなたが <code>COMMIT;</code> するまでの間、他の人がA-1の席を <code>UPDATE</code> したり <code>FOR UPDATE</code> で取得しようとすると、その人の画面はフリーズして待機状態になります。これが悲観的ロックの基本です。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+        <strong>Q2. 【ロックのスキップ（応用）】</strong><br>
+        人気のコンサートで、空いている席（status = 'available'）を「どれでもいいから1席（LIMIT 1）」確保したいです。<br>
+        しかし、普通の <code>FOR UPDATE</code> を使うと、誰かがロック中の席を引き当ててしまった場合にフリーズして待たされてしまいます。<br>
+        <b>「空席を1つ取得してロックするが、もし他の人が既にロックしている席があれば、待たずに『スキップ』して次の空席を即座にロックする」</b>という、実務で超頻出の高度なFOR UPDATE構文を書いてください。
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <pre><code>SELECT * FROM concert_seats WHERE status = 'available' LIMIT 1 FOR UPDATE SKIP LOCKED;</code></pre>
+            <p>解説：<code>SKIP LOCKED</code> はチケット予約やキュー処理（ジョブワーカー）などで必須となるテクニックです。 これをつけることで、競合による「待ち」を完全に無くし、爆速で並行処理を進めることができます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+        <strong>Q3. 【複数行の同時ロック】</strong><br>
+        銀行口座テーブルで、Alice（id=1）から Bob（id=2）へお金を振り込みます。この時、どちらの口座の残高も同時に安全に更新するため、<b>AliceとBobの両方の行を一度にロックするSELECT文</b>を書いてください。<br>
+        ヒント：<code>IN</code> 句を使うと簡潔に書けます。
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <pre><code>SELECT * FROM bank_accounts WHERE id IN (1, 2) FOR UPDATE;</code></pre>
+            <p>解説：複数行をロックする際、PostgreSQLは内部的にID順などにソートしてロックを取得してくれます。別々のクエリで1行ずつロックする（Aliceをロックした後にBobをロックする）と、デッドロック（Q6参照）の原因になるため、このように1つのクエリでまとめてロックするのが安全な設計です。</p>
+        </details>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <h3>同時実行制御とロックの問題</h3>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
+        <strong>Q4. 【分離レベルの選択】</strong><br>
+        あなたは月末に「今月の全ユーザーの売上集計レポート」を出力する重い処理（数分かかる）を実行します。<br>
+        集計中に他のユーザーが新しく売上データ（INSERT）を追加しても、集計結果が途中で変わらない（Phantomが発生しない）ようにしたいです。しかし、他のユーザーの業務（INSERT）をロックしてブロックすることは許されません。<br>
+        このレポート集計トランザクションにおいて、<b>最も適した分離レベル</b>は次のうちどれですか？<br>
+        (A) READ COMMITTED<br>
+        (B) REPEATABLE READ<br>
+        (C) SERIALIZABLE
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>正解：(B) REPEATABLE READ</strong></p>
+            <p>解説：PostgreSQLの <code>REPEATABLE READ</code> は「スナップショット分離」を採用しているため、トランザクション開始時点の過去のデータを参照し続けます。これにより、他のトランザクションの書き込みを一切ブロックすることなく、一貫したデータ（Phantomのない状態）を安全に集計できます。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
+        <strong>Q5. 【テーブルロックの仕様】</strong><br>
+        データベースの運用中、あるテーブルから不要なカラムを削除するために <code>ALTER TABLE</code> コマンドを実行しました。この時、テーブルには最強のロックである「AccessExclusiveLock」がかかります。<br>
+        この <code>ALTER TABLE</code> の処理が終わるまでの間、一般のユーザーがそのテーブルに対して単なる <code>SELECT</code>（読み取り）を実行しようとすると、どのような挙動になりますか？
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>正解：SELECTの処理もブロックされ、ALTER TABLEが終わるまでフリーズして待たされる。</strong></p>
+            <p>解説：通常、読み取り（AccessShareLock）は書き込み（RowExclusiveLock等）をブロックしませんが、テーブル構造そのものを変更する <code>ALTER TABLE</code> や <code>DROP TABLE</code> などが取得する「AccessExclusiveLock」だけは例外です。あらゆる操作とコンフリクトするため、稼働中の本番環境で実行する際は細心の注意が必要です。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
+        <strong>Q6. 【デッドロックのメカニズム】</strong><br>
+        トランザクションAが「Alice」の行をロックし、トランザクションBが「Bob」の行をロックしました。<br>
+        その後、Aが「Bob」の行をロックしようとして待ち状態になり、同時にBが「Alice」の行をロックしようとして待ち状態になりました。<br>
+        お互いがお互いのロック解放を永遠に待ち続けるこの現象を<b>デッドロック（Deadlock）</b>と呼びます。PostgreSQLはこの状態に陥った時、システムを停止させないためにどのような自動復旧処理を行いますか？
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>正解：一定時間（デフォルトで1秒）経過後にデッドロックを検知し、どちらか一方のトランザクションをエラー（強制ロールバック）にして、もう一方の処理を進める。</strong></p>
+            <p>解説：PostgreSQLにはデッドロックを監視する機能があります。エラー（<code>ERROR: deadlock detected</code>）を出された方のアプリケーションは、処理を最初からやり直す（リトライする）必要があります。これを防ぐには「常に同じ順番（例：IDの昇順）でロックを取得する」という設計ルールを設けるのが鉄則です。</p>
+        </details>
+    </div>
+
+    <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #28a745; padding-left: 15px;">
+        <strong>Q7. 【理論と実装の統合：なぜFOR UPDATEでLost Updateが防げるのか？】</strong><br>
+        Lost Update（更新の喪失）の実験で、Bさんがフリーズして待たされた後、AさんがコミットするとBさんの処理が再開しました。もしBさんがアプリ側で「在庫を9にする」という固定のUPDATE文（<code>SET stock = 9</code>）を投げていればLost Updateが発生しますが、<code>FOR UPDATE</code>でロックを取得した後に再取得（SELECT）を行えば防ぐことができます。<br>
+        なぜ <code>FOR UPDATE</code> の待機明けに再度 <code>SELECT</code> をすると、正しい計算ができるのでしょうか？（PostgreSQLのロック解除後の挙動の観点から答えてください）
+        
+        <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+            <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+            <p><strong>正解：待機が解除された直後の SELECT では、Aさんがコミットした後の「最新の確定データ」を読み取ることができるから。</strong></p>
+            <p>解説：Bさんが <code>FOR UPDATE</code> を実行した瞬間はAさんが編集中なので待ちます。Aさんが確定（コミット）してロックを手放すと、Bさんは「Aさんが書き換えた後の最新の行」を取得してプログラムに返します。アプリはその最新の数字（例：9）をもとに「9 - 1 = 8」を計算するため、データの喪失（Lost）が起きないのです。</p>
+        </details>
+    </div>
+
+</div>
+
+<p>本コンテンツの作成時間：約20時間</p>
+<p>最終更新: 2026-02-23 22:40</p></div>
 
       <div class="home-bottom"><a href="../../index.html">home</a></div>
     </main>

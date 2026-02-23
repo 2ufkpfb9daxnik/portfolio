@@ -1,10 +1,14 @@
+html, body {
+  line-height: 2;
+}
+
 :root{
   --base-color: hsl(120 48% 38%);
   --bg-color: hsl(120 20% 96%);
 }
 
 body.theme-tsuki {
-  background: var(--bg-color, #DCEAD7);
+  background: var(--bg-color, #D6DAE1);
   margin: 0;
   color: #222;
 }
@@ -256,6 +260,7 @@ p code, li code, span.code-inline {
 /* body: gutter + content */
 .code-body {
   display: flex;
+  gap: 1rem;
   width: 100%;
   min-width: 0;
   overflow: auto;
@@ -330,4 +335,146 @@ code {
   border-radius: 3px;
   background: rgba(0,0,0,0.02);
   font-size: 0.95em;
+}
+
+/* --- モード切替関連（厳密 / 具体） --- */
+/* Mode toggle area: keep existing layout but add accent-tinted background using --base-color */
+.mode-toggle-group {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  position: relative;
+  padding: 0.15rem;
+  border-radius: 8px;
+  transition: background-color .18s ease, border-color .18s ease;
+  /* subtle left-to-right tint using accent color; fallback to semi-transparent gray if color-mix unsupported */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--base-color) 10%, white), transparent);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.mode-toggle {
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.12);
+  padding: 0.25em 0.5em;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color .12s ease, border-color .12s ease, color .12s ease;
+}
+.mode-toggle.active {
+  /* stronger accent for active state */
+  background: color-mix(in srgb, var(--base-color) 22%, white);
+  border-color: color-mix(in srgb, var(--base-color) 36%, rgba(0,0,0,0.12));
+}
+body.theme-dark .mode-toggle-group {
+  /* dark theme: tint towards black for subtlety */
+  background: linear-gradient(90deg, color-mix(in srgb, var(--base-color) 8%, black), transparent);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+body.theme-dark .mode-toggle { border-color: rgba(255,255,255,0.12); color: #fff; }
+body.theme-dark .mode-toggle.active {
+  background: color-mix(in srgb, var(--base-color) 18%, black);
+  border-color: color-mix(in srgb, var(--base-color) 30%, rgba(255,255,255,0.12));
+}
+
+/* タグ単位での表示制御（data-mode 属性を使う）
+   - 要素に data-mode="precise" を付けると厳密モードでのみ表示
+   - data-mode="concrete" は具体モードでのみ表示
+   - 指定がない要素は両方のモードで表示される（デフォルト） */
+body:not(.mode-precise) [data-mode="precise"] { display: none !important; }
+body.mode-precise [data-mode="concrete"] { display: none !important; }
+
+/* 簡易: data-mode 属性が付いたが値がない場合は両方で表示（何もしない） */
+
+body.theme-tsuki .code-block {
+  background: linear-gradient(180deg, #ffffff, #fbfbfb);
+  border-color: rgba(0,0,0,0.06);
+  color: #111;
+}
+body.theme-tsuki .code-block .code-header {
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.01));
+  color: rgba(0,0,0,0.65);
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+}
+body.theme-tsuki .code-block .code-copy {
+  color: #111;
+  background: none;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+body.theme-tsuki .code-gutter {
+  background: rgba(0,0,0,0.02);
+  color: rgba(0,0,0,0.45);
+  border-right: 1px solid rgba(0,0,0,0.04);
+}
+body.theme-tsuki .code-content,
+body.theme-tsuki pre,
+body.theme-tsuki code {
+  color: #111;
+  background: transparent;
+}
+.code-block pre,
+.code-block code,
+.code-block .code-content pre,
+.code-block .code-content code {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* --- mode-controlled content background --- */
+[data-mode] {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+/* show accent-tinted background for the visible mode's elements */
+body.mode-precise [data-mode="precise"],
+body:not(.mode-precise) [data-mode="concrete"] {
+  /* use accent --base-color lightly; fall back to subtle gray */
+  background: color-mix(in srgb, var(--base-color) 10%, transparent);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--base-color) 6%, rgba(0,0,0,0.04));
+}
+
+/* dark theme adjustments */
+body.theme-dark.mode-precise [data-mode="precise"],
+body.theme-dark:not(.mode-precise) [data-mode="concrete"] {
+  background: color-mix(in srgb, var(--base-color) 12%, black);
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--base-color) 6%, rgba(0,0,0,0.4));
+}
+
+/* ensure hidden mode elements keep no background when hidden */
+body:not(.mode-precise) [data-mode="precise"] { background: none !important; box-shadow: none !important; }
+body.mode-precise [data-mode="concrete"] { background: none !important; box-shadow: none !important; }
+
+/* Expand mode-controlled elements to span the container-section's inner width
+   so the accent background reaches the content edges rather than hugging text. */
+.container-section [data-mode] {
+  margin-left: -2em;
+  margin-right: -2em;
+  padding-left: calc(2em + 0.65rem);
+  padding-right: calc(2em + 0.65rem);
+  border-radius: 6px;
+}
+
+@media (max-width: 799px) {
+  .container-section [data-mode] {
+    margin-left: -1em;
+    margin-right: -1em;
+    padding-left: calc(1em + 0.65rem);
+    padding-right: calc(1em + 0.65rem);
+  }
+}
+.code-content,
+.code-content pre,
+.code-content code,
+.code-gutter,
+pre, code {
+  white-space: pre;        /* 折り返しを無効化 */
+  overflow-x: auto;       /* 横スクロールで表示する */
+  word-break: normal;
+  word-wrap: normal;
 }
