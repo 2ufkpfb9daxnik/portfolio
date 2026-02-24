@@ -4030,6 +4030,78 @@ const result = await db
     </div>
 </div>
 
+<h3>INTERSECT</h3>
+
+<p>INTERSECT は、複数のSELECT結果の共通部分（交差）を取得します。両方のクエリに存在するレコードのみが結果に含まれます。重複するレコードは自動的に排除されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- プレミアム購読者とニュースレター購読者の両方に登録されているユーザーを取得
+SELECT id, name, email
+FROM premium_subscribers
+INTERSECT
+SELECT id, name, email
+FROM newsletter_subscribers;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db
+  .select({
+    id: premium_subscribers.id,
+    name: premium_subscribers.name,
+    email: premium_subscribers.email,
+  })
+  .from(premium_subscribers)
+  .intersect(
+    db
+      .select({
+        id: newsletter_subscribers.id,
+        name: newsletter_subscribers.name,
+        email: newsletter_subscribers.email,
+      })
+      .from(newsletter_subscribers)
+  );</code></pre>
+    </div>
+</div>
+
+<h3>EXCEPT</h3>
+
+<p>EXCEPT は、第1のSELECT結果から第2のSELECT結果に含まれるレコードを除外します。つまり、最初のクエリには存在するが、2番目のクエリには存在しないレコードが返されます。重複するレコードは自動的に排除されます。</p>
+
+<div class="code-comparison">
+    <div class="sql-block">
+        <b>【生のSQL】</b>
+        <pre><code class="sql">-- すべての顧客から、非アクティブな顧客を除外してアクティブなユーザーを取得
+SELECT id, name, email
+FROM all_customers
+EXCEPT
+SELECT id, name, email
+FROM inactive_customers;</code></pre>
+    </div>
+    <div class="drizzle-block">
+        <b>【Drizzle ORM】</b>
+        <pre><code class="typescript">const result = await db
+  .select({
+    id: all_customers.id,
+    name: all_customers.name,
+    email: all_customers.email,
+  })
+  .from(all_customers)
+  .except(
+    db
+      .select({
+        id: inactive_customers.id,
+        name: inactive_customers.name,
+        email: inactive_customers.email,
+      })
+      .from(inactive_customers)
+  );</code></pre>
+    </div>
+</div>
+
+
+
 <h2>結合 演習問題</h2>
 
 <div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
@@ -4215,6 +4287,58 @@ const result = await db
       .from(archived_customers)
   );</code></pre>
         <p>解説：UNION により、2つの SELECT 結果が縦に結合されます。重複するレコードは自動的に排除されます（UNION ALL を使うと重複が保持されます）。結合対象のカラム数と型が一致している必要があります。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q10. INTERSECT による共通部分の抽出</strong><br>
+    <code>premium_subscribers</code> テーブルと <code>newsletter_subscribers</code> テーブルをINTERSECTで結合して、<b>両方のリストに含まれているユーザーのIDと名前のみを取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { premium_subscribers, newsletter_subscribers } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    id: premium_subscribers.id,
+    name: premium_subscribers.name,
+  })
+  .from(premium_subscribers)
+  .intersect(
+    db
+      .select({
+        id: newsletter_subscribers.id,
+        name: newsletter_subscribers.name,
+      })
+      .from(newsletter_subscribers)
+  );</code></pre>
+        <p>解説：INTERSECT により、2つの SELECT 結果の交差（共通部分）が返されます。両方のクエリに同じレコードが存在する場合のみが結果に含まれます。重複するレコードは自動的に排除されます。この操作は、複数の条件を満たすユーザーの抽出などに有用です。</p>
+    </details>
+</div>
+
+<div class="quiz-question" style="margin-bottom: 20px; border-left: 4px solid #007bff; padding-left: 15px;">
+    <strong>Q11. EXCEPT による差集合の抽出</strong><br>
+    <code>all_customers</code> テーブルから <code>inactive_customers</code> テーブルに含まれるユーザーを除外して、<b>アクティブなユーザーのIDと名前を取得</b>してください。
+    
+    <details style="margin-top: 10px; background-color: #f6f8fa; padding: 10px; border-radius: 5px;">
+        <summary style="cursor: pointer; font-weight: bold;">解答を見る</summary>
+        <pre><code class="typescript">import { all_customers, inactive_customers } from './schema'; // schema.ts からインポート
+
+const result = await db
+  .select({
+    id: all_customers.id,
+    name: all_customers.name,
+  })
+  .from(all_customers)
+  .except(
+    db
+      .select({
+        id: inactive_customers.id,
+        name: inactive_customers.name,
+      })
+      .from(inactive_customers)
+  );</code></pre>
+        <p>解説：EXCEPT により、第1のクエリの結果から第2のクエリの結果に含まれるレコードが除外されます。つまり、最初のテーブルに存在しているが、2番目のテーブルには存在しないレコードが返されます。この操作は、除外リストを用いたデータ の絞り込みなどに有用です。</p>
     </details>
 </div>
 
