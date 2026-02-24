@@ -1794,7 +1794,7 @@ function groupTerminalCodeBlocks() {
       containerA.className = 'terminal-container-a';
       const labelA = document.createElement('div');
       labelA.className = 'terminal-label';
-      labelA.textContent = 'Aさんのターミナル';
+      labelA.textContent = 'A';
       containerA.appendChild(labelA);
       containerA.appendChild(codeBlockA.cloneNode(true));
 
@@ -1803,7 +1803,7 @@ function groupTerminalCodeBlocks() {
       containerB.className = 'terminal-container-b';
       const labelB = document.createElement('div');
       labelB.className = 'terminal-label';
-      labelB.textContent = 'Bさんのターミナル';
+      labelB.textContent = 'B';
       containerB.appendChild(labelB);
       containerB.appendChild(codeBlockB.cloneNode(true));
 

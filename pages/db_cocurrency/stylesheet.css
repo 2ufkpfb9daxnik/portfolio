@@ -561,10 +561,11 @@ body.theme-dark .hljs-type { color: #f97583; }
 
 .experiment-terminals .terminal-label {
   font-weight: 700;
-  font-size: 0.95em;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
-  border-bottom: 2px solid rgba(0, 123, 255, 0.3);
+  font-size: 1.2em;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-left: 4px solid #007bff;
+  padding-left: 10px;
   color: #007bff;
 }
 
