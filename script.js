@@ -1,12 +1,13 @@
 (function () {
   const TEXT_FLOW_CONFIG = {
-    minSpawnSec: 0.22,
-    maxSpawnSec: 0.72,
-    maxItems: 42,
-    fontSizeRange: [20, 30],
-    speedRange: [500, 700],
+    maxItems: 900,
+    fontSizeRange: [14, 62],
+    lineGapRange: [4, 14],
+    segmentGapRange: [6, 22],
+    speedRange: [80, 210],
     alphaRange: [0.12, 0.34],
-    rightToLeftRate: 0.86
+    edgePadding: 28,
+    maxSegmentChars: 36
   };
 
   function rand(a, b) { return a + Math.random() * (b - a); }
@@ -150,6 +151,42 @@
     return String(text || '').replace(/\s+/g, ' ').trim();
   }
 
+  function splitTextToSegments(text) {
+    const raw = String(text || '').replace(/\r\n?/g, '\n');
+    const out = [];
+
+    function pushWithLimit(segment) {
+      const s = normalizeText(segment);
+      if (!s || !hasJapanese(s)) return;
+      const maxChars = TEXT_FLOW_CONFIG.maxSegmentChars;
+      if (s.length <= maxChars) {
+        out.push(s);
+        return;
+      }
+      for (let i = 0; i < s.length; i += maxChars) {
+        const part = normalizeText(s.slice(i, i + maxChars));
+        if (part && hasJapanese(part)) out.push(part);
+      }
+    }
+
+    const lines = raw.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      // 句点類ごとに終端を保持して分割する
+      const matches = trimmed.match(/[^。．.!?！？]+[。．.!?！？]?/g);
+      if (!matches) {
+        pushWithLimit(trimmed);
+        continue;
+      }
+      for (const m of matches) {
+        pushWithLimit(m);
+      }
+    }
+
+    return out;
+  }
+
   function appendTextFromRoot(root, bucket) {
     const skipTag = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT']);
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -157,8 +194,8 @@
     while (node) {
       const parent = node.parentElement;
       if (!parent || !skipTag.has(parent.tagName)) {
-        const text = normalizeText(node.nodeValue);
-        if (text && hasJapanese(text)) bucket.add(text);
+        const segments = splitTextToSegments(node.nodeValue);
+        segments.forEach(seg => bucket.add(seg));
       }
       node = walker.nextNode();
     }
@@ -173,8 +210,8 @@
 
     document.querySelectorAll('[alt], [title], [aria-label], [placeholder]').forEach(el => {
       ['alt', 'title', 'aria-label', 'placeholder'].forEach(attr => {
-        const value = normalizeText(el.getAttribute(attr));
-        if (value && hasJapanese(value)) out.add(value);
+        const segments = splitTextToSegments(el.getAttribute(attr));
+        segments.forEach(seg => out.add(seg));
       });
     });
 
@@ -202,8 +239,8 @@
     constructor(textPool) {
       this.textPool = (textPool || []).filter(Boolean);
       this.items = [];
+      this.lanes = [];
       this.time = performance.now();
-      this.spawnTimer = 0;
       this.baseHsl = getBaseTextHsl();
 
       this.canvas = document.createElement('canvas');
@@ -244,6 +281,7 @@
       this.canvas.style.width = w + 'px';
       this.canvas.style.height = h + 'px';
       this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      this.rebuildLanes();
     }
 
     pickText() {
@@ -251,38 +289,79 @@
       return this.textPool[Math.floor(Math.random() * this.textPool.length)];
     }
 
-    spawnOne() {
+    spawnOne(lane) {
       if (this.items.length >= TEXT_FLOW_CONFIG.maxItems) return;
       const text = this.pickText();
-      const size = rand(TEXT_FLOW_CONFIG.fontSizeRange[0], TEXT_FLOW_CONFIG.fontSizeRange[1]);
-      const weight = Math.random() < 0.34 ? 600 : 400;
-      const direction = Math.random() < TEXT_FLOW_CONFIG.rightToLeftRate ? -1 : 1;
-      const speed = rand(TEXT_FLOW_CONFIG.speedRange[0], TEXT_FLOW_CONFIG.speedRange[1]) * direction;
-      const alpha = rand(TEXT_FLOW_CONFIG.alphaRange[0], TEXT_FLOW_CONFIG.alphaRange[1]);
-      const font = `${weight} ${Math.round(size)}px "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif`;
-
-      this.ctx.font = font;
+      this.ctx.font = lane.font;
       const width = Math.max(8, this.ctx.measureText(text).width);
-      const padding = 36;
-      const x = direction < 0 ? this.w + padding : -width - padding;
-      const y = rand(size * 0.9, this.h - size * 0.5);
+      const x = lane.nextSpawnX;
+      const y = lane.y;
       const lJitter = rand(-10, 12);
+      const alpha = rand(TEXT_FLOW_CONFIG.alphaRange[0], TEXT_FLOW_CONFIG.alphaRange[1]);
 
-      this.items.push({ text, size, font, speed, alpha, width, x, y, lJitter });
+      this.items.push({
+        text,
+        font: lane.font,
+        speed: lane.speed,
+        alpha,
+        width,
+        x,
+        y,
+        lJitter,
+        laneId: lane.id
+      });
+
+      lane.nextSpawnX += width + rand(TEXT_FLOW_CONFIG.segmentGapRange[0], TEXT_FLOW_CONFIG.segmentGapRange[1]);
+    }
+
+    rebuildLanes() {
+      this.items.length = 0;
+      this.lanes.length = 0;
+
+      let yCursor = TEXT_FLOW_CONFIG.edgePadding;
+      let laneId = 0;
+      while (yCursor < this.h - TEXT_FLOW_CONFIG.edgePadding) {
+        const size = rand(TEXT_FLOW_CONFIG.fontSizeRange[0], TEXT_FLOW_CONFIG.fontSizeRange[1]);
+        const lineGap = rand(TEXT_FLOW_CONFIG.lineGapRange[0], TEXT_FLOW_CONFIG.lineGapRange[1]);
+        const lineHeight = Math.round(size * rand(1.15, 1.34));
+        const baselineY = yCursor + lineHeight * 0.5;
+        if (baselineY > this.h - TEXT_FLOW_CONFIG.edgePadding) break;
+
+        const lane = {
+          id: laneId++,
+          y: baselineY,
+          speed: rand(TEXT_FLOW_CONFIG.speedRange[0], TEXT_FLOW_CONFIG.speedRange[1]),
+          font: `${Math.random() < 0.35 ? 600 : 400} ${Math.round(size)}px "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif`,
+          nextSpawnX: this.w + rand(-lineHeight, lineHeight * 2.3)
+        };
+        this.lanes.push(lane);
+        yCursor += lineHeight + lineGap;
+      }
+
+      this.populateInitialItems();
+    }
+
+    populateInitialItems() {
+      for (const lane of this.lanes) {
+        lane.nextSpawnX = -rand(50, 180);
+        while (lane.nextSpawnX < this.w + rand(120, 260) && this.items.length < TEXT_FLOW_CONFIG.maxItems) {
+          this.spawnOne(lane);
+        }
+      }
     }
 
     update(dt) {
-      this.spawnTimer -= dt;
-      if (this.spawnTimer <= 0) {
-        this.spawnOne();
-        if (Math.random() < 0.2) this.spawnOne();
-        this.spawnTimer = rand(TEXT_FLOW_CONFIG.minSpawnSec, TEXT_FLOW_CONFIG.maxSpawnSec);
+      for (const lane of this.lanes) {
+        lane.nextSpawnX -= lane.speed * dt;
+        while (lane.nextSpawnX <= this.w + 160 && this.items.length < TEXT_FLOW_CONFIG.maxItems) {
+          this.spawnOne(lane);
+        }
       }
 
       for (let i = this.items.length - 1; i >= 0; i--) {
         const it = this.items[i];
-        it.x += it.speed * dt;
-        if ((it.speed < 0 && it.x < -it.width - 48) || (it.speed > 0 && it.x > this.w + 48)) {
+        it.x -= it.speed * dt;
+        if (it.x + it.width < -200) {
           this.items.splice(i, 1);
         }
       }
