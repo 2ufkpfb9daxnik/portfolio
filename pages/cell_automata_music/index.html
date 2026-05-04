@@ -71,8 +71,8 @@
   <li>root_pc (int): ルート音のピッチクラス（C=0, C#=1, ..., B=11）。</li>
   <li>intervals (list[int]): ルート音からの半音間隔の配列（例: メジャーペンタトニックなら [0, 2, 4, 7, 9]）。</li>
 </ul>
-<p>MIDIノート番号 48 (C3) を基準値とし、指定された root<em>pc と intervals を用いてノート番号を算出します。オクターブを増やしながら、要素数が WARP</em>HISTORY<em>MAX（デフォルト12）に達するまで配列に格納（高音域を避けるため root</em>pc &gt; 5 の場合は基準値を1オクターブ下げる）。</p>
-<p>返り値: list[int]。生成されたノート番号の配列。画面の上部から下部へマッピングするため、降順（reverse=True）にソートして返却します。</p>
+<p>MIDIノート番号 48 (C3) を基準値とし、指定された root<em>pc と intervals を用いてノート番号を算出。オクターブを増やしながら、要素数が WARP</em>HISTORY<em>MAX（デフォルト12）に達するまで配列に格納（高音域を避けるため root</em>pc &gt; 5 の場合は基準値を1オクターブ下げる）。</p>
+<p>返り値: list[int]。生成されたノート番号の配列。画面の上部から下部へマッピングするため、降順（reverse=True）にソートして返す。</p>
 <p>次にセルオートマトンの関数:</p>
 <pre><code class="python">def rule30(left, center, right):
     state = (left &lt;&lt; 2) | (center &lt;&lt; 1) | right
