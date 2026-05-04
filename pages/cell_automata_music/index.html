@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>セル・オートマトンで音楽を作成する</title>
+  <link rel="stylesheet" href="stylesheet.css" />
+</head>
+<body class="theme-tsuki">
+  <div class="layout">
+    <nav class="sidebar">
+      <a class="home-link" href="../../index.html">home</a>
+      <button class="theme-toggle" onclick="toggleTheme()">🌙/☀️</button>
+      <div class="toc"></div>
+    </nav>
+    <main class="main-content">
+      <div class="home-top">
+        <a href="../../index.html">home</a>
+        <button class="theme-toggle mobile-only" onclick="toggleTheme()">🌙/☀️</button>
+      </div>
+
+      <div id="content-wrapper"><p>作成: 2026-05-05 06:15</p>
+<h1>セル・オートマトンで音楽を作成する</h1>
+<p><a href="https://www.youtube.com/watch?v=AxH9Z6veKf8">完全にこれの受け売りであるわけだが...</a></p>
+<p>見て感動したので、記念に書いておく。実際に実行したし。rule30というのをyoutubeで普通に検索するとことぶき光以外の普通にそういう現象としてただビジュアライズしている動画はたくさんあるけど、これに調性付きの音をつけてやるという発想はなかった。</p>
+<h2>セル・オートマトンについて今回必要な部分だけを概説</h2>
+<p>一般性を捨てて言うと、1次元のマスが無限に並んでいて、それぞれには0か1が書かれている。これからステップを進めていくとき、次のステップでのマスの状態は、今のステップでの自分と両隣のマスの状態によって決まる。</p>
+<p>例えば、rule30は、次のようなルールで状態が決まる。</p>
+<table>
+  <thead><tr><th>左</th><th>真ん中</th><th>右</th><th>次の(真ん中の)状態</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>0</td><td>0</td><td>1</td><td>1</td></tr>
+    <tr><td>0</td><td>1</td><td>0</td><td>1</td></tr>
+    <tr><td>0</td><td>1</td><td>1</td><td>1</td></tr>
+    <tr><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+    <tr><td>1</td><td>0</td><td>1</td><td>1</td></tr>
+    <tr><td>1</td><td>1</td><td>0</td><td>1</td></tr>
+    <tr><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+  </tbody>
+</table>
+<p>これは1ステップごとに全てのマスに適用される。</p>
+<p>初期状態によっていろいろ出来るが、例えば、初期状態が真ん中だけ1であとは0のときというのを考えると、ステップを進めるにつれてどんどん長さは拡大していく。</p>
+<p>このルールは、ルールを表す8ビットの数値で表すことができる。例えば、rule30は、00011110というビット列で表される。これを10進数にすると30になるので、rule30という名前がついている。</p>
+<h2>音楽にする</h2>
+<p>動画では、真ん中を含めて横に19マス分を切り取って考える。ステップを進めると縦の行になって(過去の結果も11回再利用する)、最終的に19*12のマスができる。</p>
+<p>縦の位置によって音の高さを決める。そして切り取った19マスの一番左縦1列から右に向かって、マスの立ち上がりビットを検出したときに音を鳴らす。一番右に来たらもう一度左に戻る(コード中ではワープと書く)。音の高さは固定では無く、左に戻ったときに変更される。どれに変更されるか？というのは適当にコード進行とかで検索するとかすればよい。機能和声の理論については詳しくないため動画でどういう感じなのかは不明であるが、俺はaiに色々聞いた。</p>
+<h2>実装</h2>
+<p>こういう変なことをできそうなライブラリがほぼ確実にありそうなのでpythonを使う。いや音を出すというのは変ではないが、midiを使いたかった。</p>
+<p>まず<a href="https://www.fluidsynth.org">fluidsynthというソフト</a>を落としてくる。binをいい感じの場所に置く。今回はそんなにずっと使うわけじゃないのでpathは通さずプログラムのルートディレクトリにそのままおいた。</p>
+<p>音源は<a href="https://musescore.org/ja/print/book/export/html/278624">MuseScore_General.sf3</a>を使う。プログラムと同じディレクトリにおいた。これも特に理由は無いが昔musescoreは使ったことがあるので</p>
+<p>pythonのライブラリはmidoというのがいいらしいので使う numpyも計算用で入れとく</p>
+<p>まず音階を作る関数:</p>
+<pre><code class="python">def build_scale(root_pc, intervals):
+    scale = []
+    base = 48 + root_pc
+    if root_pc &gt; 5:
+        base -= 12
+        
+    octave = 0
+    while len(scale) &lt; WARP_HISTORY_MAX:
+        for iv in intervals:
+            if len(scale) &gt;= WARP_HISTORY_MAX: 
+                break
+            scale.append(base + (octave * 12) + iv)
+        octave += 1
+        
+    return sorted(scale, reverse=True)</code></pre>
+<p>引数:</p>
+<ul>
+  <li>root_pc (int): ルート音のピッチクラス（C=0, C#=1, ..., B=11）。</li>
+  <li>intervals (list[int]): ルート音からの半音間隔の配列（例: メジャーペンタトニックなら [0, 2, 4, 7, 9]）。</li>
+</ul>
+<p>MIDIノート番号 48 (C3) を基準値とし、指定された root<em>pc と intervals を用いてノート番号を算出します。オクターブを増やしながら、要素数が WARP</em>HISTORY<em>MAX（デフォルト12）に達するまで配列に格納（高音域を避けるため root</em>pc &gt; 5 の場合は基準値を1オクターブ下げる）。</p>
+<p>返り値: list[int]。生成されたノート番号の配列。画面の上部から下部へマッピングするため、降順（reverse=True）にソートして返却します。</p>
+<p>次にセルオートマトンの関数:</p>
+<pre><code class="python">def rule30(left, center, right):
+    state = (left &lt;&lt; 2) | (center &lt;&lt; 1) | right
+    rules = [0, 1, 1, 1, 1, 0, 0, 0]
+    return rules[state]
+
+def step(cells):
+    expanded = [0] + cells + [0]
+    n = len(expanded)
+    new_cells = [0] * n
+    for i in range(n):
+        left = expanded[i - 1] if i &gt; 0 else 0
+        center = expanded[i]
+        right = expanded[i + 1] if i &lt; n - 1 else 0
+        new_cells[i] = rule30(left, center, right)
+    return new_cells</code></pre>
+<p>rule30の引数は左、真ん中、右の状態を表す0か1の整数。これらをビットシフトとビット演算で一つの整数 state にまとめ、その state をインデックスとしてルール配列から次の真ん中のマスの状態を返す。</p>
+<p>stepの引数は現在のマスの状態を表す0と1のリスト。両端に0を追加して番兵とし、各マスについて左、真ん中、右の状態を rule30 に渡して新しい状態を new_cells に格納して返す。</p>
+<p>あとはIO周りの関数:</p>
+<pre><code class="python">def start_fluidsynth():
+    if not FLUIDSYNTH_AUTO_START: return None
+    try:
+        return subprocess.Popen(
+            [FLUIDSYNTH_PATH, &quot;-i&quot;, &quot;-a&quot;, &quot;dsound&quot;, &quot;-m&quot;, &quot;winmm&quot;, SOUNDFONT_PATH],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:
+        print(f&quot;FluidSynth起動エラー: {e}&quot;)
+        return None
+
+def open_midi_output():
+    output_names = mido.get_output_names()
+    if not output_names: raise RuntimeError(&quot;MIDI出力ポートが見つかりません&quot;)
+    preferred = None
+    for name in output_names:
+        if MIDI_PORT_NAME.lower() in name.lower():
+            preferred = name
+            break
+    if preferred is None:
+        preferred = output_names[0]
+    return mido.open_output(preferred)
+
+def sleep_until(target_time):
+    now = time.monotonic()
+    if target_time &gt; now:
+        time.sleep(target_time - now)</code></pre>
+<ul>
+  <li>start<em>fluidsynthはFLUIDSYNTH</em>AUTO_STARTがTrueの場合にsubprocess.Popenを使ってFluidSynthを起動する。</li>
+  <li>open<em>midi</em>outputは利用可能なMIDI出力ポートを取得し、MIDI<em>PORT</em>NAMEが含まれる名前の仮想MIDIポートを優先して開く。見つからない場合は最初のポートを開く。</li>
+  <li>sleep<em>untilは指定されたtarget</em>timeまで現在の時間を取得し、必要に応じてsleepする。これはいらないようにも思えるが結構音声再生はずれるので要る。</li>
+</ul>
+<pre><code class="python">while True:
+    current_scale = current_sequence[chord_index]
+    
+    prev_states = [0] * len(display_history)
+    loop_start = time.monotonic()
+    
+    # 1画面（ワープ）分の列を左から右へ走査
+    for col in range(WIDTH):
+        col_start = loop_start + (col * COL_DURATION)
+        sleep_until(col_start) # テンポ同期
+
+        midi_notes = []
+
+        # 全行を縦にチェックし、発音タイミングを検出
+        for row in range(len(display_history)):
+            line = display_history[row]
+            # 現在のセルが1(*)かどうかを判定
+            current = 1 if col &lt; len(line) and line[col] == &#x27;*&#x27; else 0
+            
+            # 立ち上がり検出して0-&gt;1のときのみ音を鳴らす
+            if prev_states[row] == 0 and current == 1:
+                midi_note = current_scale[row % len(current_scale)]
+                midi_notes.append(midi_note)
+            
+            # 次の列の判定のために状態を保存
+            prev_states[row] = current
+        
+        # 発音制御 (Note On -&gt; 待機 -&gt; Note Off)
+        if midi_notes:
+            for note in midi_notes:
+                outport.send(mido.Message(&quot;note_on&quot;, note=note, velocity=80))
+
+        sleep_until(col_start + COL_DURATION) # 1列分
+
+        if midi_notes:
+            for note in midi_notes:
+                outport.send(mido.Message(&quot;note_off&quot;, note=note, velocity=0))
+    
+    # ワープ完了後の処理
+    cells = step(cells)
+  
+    #...(その他完了後の更新処理)
+
+    # コード進行を次に進める
+    chord_index += 1
+    if chord_index &gt;= len(current_sequence):
+        # 次のコードを適当に選ぶ</code></pre>
+<h2>動画</h2>
+<p><iframe width="560" height="315" src="https://www.youtube.com/embed/hXeUdjurP0Q" frameborder="0" allowfullscreen></iframe></p>
+<p>【隅付き括弧で囲まれてる】のが1つのコード進行</p>
+<h2>感想</h2>
+<p>こんな単純なルールでここまで(割と聞ける)のが出来るのはすごいと思った。バリエーションは無限ですし</p>
+<p>最終更新: 2026-05-05 07:26</p></div>
+
+      <div class="home-bottom"><a href="../../index.html">home</a></div>
+    </main>
+  </div>
+
+  <!-- 統合スクリプトを外部から読み込む -->
+  <script src="script.js"></script>
+</body>
+</html>
