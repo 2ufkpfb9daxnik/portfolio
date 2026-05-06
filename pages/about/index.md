@@ -4,9 +4,7 @@ title: "紹介"
 
 高専5年 情報科
 
-広くコンピューターと言語に興味があり、両方が交わるIMEやキーボードの論理配列などには特に興味があります。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)[2025は優勝しました。](https://www.youtube.com/watch?v=_sw6MZ5shTo&t=2097s)競技プログラミングもしています。ゲームも好きです。今は崩壊スターレイル(マネーウォーズのみ)とGregtech CEu modernを遊んでいます。
-
-各種リンク
+コンピューターと言語に興味があり、特に両方が交わるIMEやキーボードの論理配列、プログラム意味論などに手を出しています。[Alternative Typing Contestに自作配列で提出したことがあります。](https://www.youtube.com/watch?v=iKSnUOVDimM&t=1750s)[2025は優勝しました。](https://www.youtube.com/watch?v=_sw6MZ5shTo&t=2097s)競技プログラミングもしています。オートチェスとgregtechが好き。
 
 - [Bluesky](https://bsky.app/profile/nwpzphn9wui8mbj.bsky.social)
 - [AtCoder](https://atcoder.jp/users/tpgugmu)
@@ -19,14 +17,14 @@ title: "紹介"
 - WSL Ubuntu
 - TypeScript
 - [Godot](https://godotengine.org)
+- ocaml
+- [SATySFi](https://github.com/gfngfn/SATySFi)
 - GitおよびGitHub
 - HTML/CSS/JavaScript
 - React
 - Next.js
 - prisma
 - vercel
-- [SATySFi](https://github.com/gfngfn/SATySFi)
-- ocaml
 - [microCMS](https://microcms.io)
 - Unity
 - Apache HTTP Server
@@ -42,10 +40,11 @@ title: "紹介"
 
 ## やってみたい・やりたいこと
 
-副作用こそプログラミングのすべてであるというのもわかるし、そうではなくて型システムで静的解析できるものが全てであるというのもわかるので、その両取りができる言語及び機能に興味があります。
+副作用とプログラムの制御構造に関する種々のアイデアに興味があります
 
 - [koka](https://koka-lang.github.io/koka/doc/index.html) 代数的エフェクトで副作用を統一的に扱えるのに非常に魅力を感じています forが関数になっているとか、minimum but generalというのがshemeとかの本当に必要な言語機能だけを取り入れるという感じで良い メモリ確保をうまいことやっているperceusというのも面白そう
-- Rust
+- OxCaml触ってみたい
+- Rust少しやりたい
 
 日本語入力に興味があります。
 
@@ -65,3 +64,4 @@ title: "紹介"
 - [ReactとNext.jsで作成しデータベースをSupabaseで、ホスティングをVercelでおこなっているSNS](https://pyrrhula.vercel.app)
 - [応用専門PBL1という授業で作成した学食注文システム](https://s-ao213.github.io/PBL/User/) ユーザー名を123、パスワードを456として入力することでテストユーザーでログインできます
 - [2024年度のnaist stellaプログラムで作った手書き数式のデータセット](https://github.com/2ufkpfb9daxnik/handwritten-formula)
+- [順次打鍵なら多分ほとんどの方式に対応したタイピングゲーム](https://2ufkpfb9daxnik.github.io/atw/)
