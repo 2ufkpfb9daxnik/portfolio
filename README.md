@@ -1,17 +1,3 @@
-# 作成
+# こんにちは
 
-pagesに(ファイル名)/index.mdを書いて、
-
-```python
-.\pandoc.py pages\(ファイル名)
-```
-
-を実行
-
-## pandoc
-
-[Pandoc - Installing pandoc](https://pandoc.org/installing.html)
-
-## ?
-
-gifとかでさらに動く背景にしても良い
+[2ufkpfb9daxnik.github.io](https://2ufkpfb9daxnik.github.io/portfolio/)
